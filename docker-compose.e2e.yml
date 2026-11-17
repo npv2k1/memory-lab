@@ -1,0 +1,37 @@
+name: memory-lab-e2e
+services:
+  api:
+    build:
+      context: .
+      target: base
+    environment:
+      DATA_DIR: /data
+      QDRANT_URL: http://qdrant:6333
+      EMBEDDING_BASE_URL: http://embeddings:8001/v1
+      EMBEDDING_MODEL: e2e-fixture
+      CORS_ORIGINS: '["http://localhost:4321"]'
+    volumes: ["artifacts:/data"]
+    depends_on: [qdrant, embeddings]
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3); urllib.request.urlopen('http://qdrant:6333/readyz', timeout=3); urllib.request.urlopen('http://embeddings:8001/health', timeout=3)"]
+      interval: 3s
+      timeout: 8s
+      retries: 30
+  web:
+    build: ./apps/web
+    ports: ["127.0.0.1:4321:4321"]
+    depends_on:
+      api:
+        condition: service_healthy
+  qdrant:
+    image: qdrant/qdrant:v1.14.1
+    volumes: ["qdrant:/qdrant/storage"]
+  embeddings:
+    build:
+      context: .
+      target: base
+    volumes: ["./tests/e2e/support:/support:ro"]
+    command: [python, /support/embeddings.py]
+volumes:
+  artifacts:
+  qdrant:

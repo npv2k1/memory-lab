@@ -1,0 +1,33 @@
+name: memory-lab
+services:
+  api:
+    image: ${REGISTRY_PREFIX:?Set REGISTRY_PREFIX}/api:${IMAGE_TAG:?Set IMAGE_TAG}
+    restart: unless-stopped
+    env_file: ${DEPLOY_ENV_FILE:?Set DEPLOY_ENV_FILE}
+    environment:
+      DATA_DIR: /data
+      QDRANT_URL: http://qdrant:6333
+    volumes: ["artifacts:/data", "models:/root/.cache"]
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    depends_on: [qdrant]
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3); urllib.request.urlopen('http://qdrant:6333/readyz', timeout=3)"]
+      interval: 10s
+      timeout: 8s
+      start_period: 30s
+      retries: 12
+  web:
+    image: ${REGISTRY_PREFIX:?Set REGISTRY_PREFIX}/web:${IMAGE_TAG:?Set IMAGE_TAG}
+    restart: unless-stopped
+    ports: ["127.0.0.1:4321:4321"]
+    depends_on:
+      api:
+        condition: service_healthy
+  qdrant:
+    image: qdrant/qdrant:v1.14.1
+    restart: unless-stopped
+    volumes: ["qdrant:/qdrant/storage"]
+volumes:
+  artifacts:
+  models:
+  qdrant:

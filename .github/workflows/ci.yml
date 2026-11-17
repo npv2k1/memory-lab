@@ -1,0 +1,113 @@
+name: CI and images
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: uv sync --locked --extra dev
+      - run: uv run --no-sync pytest tests/test_pipeline.py -q
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.4.4'
+      - run: bun install --frozen-lockfile
+        working-directory: apps/web
+      - run: bun run build
+        working-directory: apps/web
+      - name: Validate Compose configuration
+        run: |
+          cp .env.example .env
+          docker compose config --quiet
+          docker compose -f docker-compose.e2e.yml config --quiet
+          REGISTRY_PREFIX=ghcr.io/${GITHUB_REPOSITORY,,} IMAGE_TAG=sha-$GITHUB_SHA DEPLOY_ENV_FILE=.env docker compose -f docker-compose.deploy.yml config --quiet
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: uv sync --locked --extra dev --extra e2e
+      - run: uv run --no-sync playwright install --with-deps chromium
+      - name: Start isolated E2E stack
+        run: docker compose -f docker-compose.e2e.yml up -d --build --wait --wait-timeout 180
+      - name: Browser E2E
+        run: uv run --no-sync pytest tests/e2e -q
+        env:
+          E2E: '1'
+          E2E_BASE_URL: http://localhost:4321
+      - name: Collect container logs
+        if: always()
+        run: |
+          mkdir -p test-results
+          docker compose -f docker-compose.e2e.yml logs --no-color > test-results/compose.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-results
+          path: test-results/
+          retention-days: 7
+      - name: Clean isolated stack
+        if: always()
+        run: docker compose -f docker-compose.e2e.yml down -v --remove-orphans
+  images:
+    needs: [checks, e2e]
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: api
+            context: .
+          - service: web
+            context: ./apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Image repository
+        id: image
+        env:
+          REPOSITORY: ${{ github.repository }}
+        run: echo "name=ghcr.io/${REPOSITORY,,}/${{ matrix.service }}" >> "$GITHUB_OUTPUT"
+      - uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          target: production
+          push: true
+          tags: |
+            ${{ steps.image.outputs.name }}:sha-${{ github.sha }}
+            ${{ steps.image.outputs.name }}:main
+          labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}

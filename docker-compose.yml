@@ -1,6 +1,10 @@
+name: memory-lab
 services:
   api:
-    build: .
+    build:
+      context: .
+      target: production
+    restart: unless-stopped
     env_file: .env
     environment:
       DATA_DIR: /data
@@ -9,17 +13,28 @@ services:
     volumes: ["artifacts:/data", "models:/root/.cache"]
     extra_hosts: ["host.docker.internal:host-gateway"]
     depends_on: [qdrant]
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3); urllib.request.urlopen('http://qdrant:6333/readyz', timeout=3)"]
+      interval: 10s
+      timeout: 8s
+      start_period: 30s
+      retries: 12
   web:
     build: ./apps/web
+    restart: unless-stopped
     ports: ["127.0.0.1:4321:4321"]
-    depends_on: [api]
+    depends_on:
+      api:
+        condition: service_healthy
   qdrant:
     image: qdrant/qdrant:v1.14.1
+    restart: unless-stopped
     ports: ["127.0.0.1:6333:6333"]
     volumes: ["qdrant:/qdrant/storage"]
   neo4j:
     image: neo4j:5.26-community
     profiles: [memory]
+    restart: unless-stopped
     environment:
       NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:-memory-lab-local}
     ports: ["127.0.0.1:7474:7474", "127.0.0.1:7687:7687"]
@@ -27,6 +42,7 @@ services:
   redis:
     image: redis:7.4-alpine
     profiles: [memory]
+    restart: unless-stopped
     ports: ["127.0.0.1:6379:6379"]
     volumes: ["redis:/data"]
     command: [redis-server, --appendonly, "yes"]

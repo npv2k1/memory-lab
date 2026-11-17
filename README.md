@@ -99,3 +99,7 @@ Chưa có trước khi setup: toàn bộ source code và infrastructure. Sau set
 - Chưa chạy Docker Compose/PDF thực tế: môi trường setup không có Docker và chưa cấu hình embedding model.
 
 Chi tiết hợp đồng và ranh giới xử lý dữ liệu: [documents modules](src/memory_lab/documents/README.md).
+
+## Docker, CI/CD và E2E
+
+[Hướng dẫn delivery](docs/delivery.md): Compose có healthchecks, frontend Nginx proxy `/api`, GitHub Actions integration/browser tests, publish GHCR và manual deploy trên self-hosted runner.

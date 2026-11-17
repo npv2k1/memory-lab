@@ -4,7 +4,7 @@
 <body>
 <main>
 <header><small>DOCUMENT PROCESSING · PHASE 1</small><h1>Memory Lab</h1><p>Khám phá tài liệu, pipeline và nguồn chứng cứ.</p></header>
-<label>API URL <input id="api" value="http://localhost:8000" /></label>
+<label>API URL <input id="api" value="/api" /></label>
 <section><h2>1. Tài liệu</h2><form id="upload"><input type="file" id="file" accept=".pdf,.docx,.md,.txt,.html" required/><button>Upload</button></form><div id="documents"></div></section>
 <section><h2>2. Pipeline inspector</h2><p>Chọn Process trên tài liệu. PDF/DOCX dùng Docling; TXT/Markdown có thể dùng text.</p><label>Parser <select id="parser"><option>docling</option><option>text</option></select></label> <label>Chunker <select id="chunker"><option>fixed</option><option>hybrid</option></select></label><div id="runs"></div><pre id="artifact">Chọn artifact để xem.</pre></section>
 <section><h2>3. Retrieval playground</h2><form id="search"><input id="query" placeholder="Nội dung cần tìm…" required/><button>Tìm kiếm</button></form><div id="results"></div></section>
