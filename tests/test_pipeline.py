@@ -1,4 +1,3 @@
-from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 from qdrant_client import QdrantClient
@@ -6,6 +5,8 @@ from apps.api.main import create_app
 from memory_lab.core.config import Settings
 from memory_lab.core.models import PipelineConfig
 from memory_lab.documents.pipeline.service import DocumentPipeline
+from memory_lab.documents.parsers.adapters import TextParser
+from memory_lab.documents.parsers.service import ParsingService
 from memory_lab.storage.filesystem.store import FileStore
 from memory_lab.storage.qdrant.index import QdrantIndex
 
@@ -24,7 +25,16 @@ def test_upload_process_retry_search_source(tmp_path):
     embeddings = Embeddings()
     client = QdrantClient(':memory:')
     index = QdrantIndex(client, 'test')
-    pipeline = DocumentPipeline(store, embeddings, index, 'test-model')
+    class CountingParser(TextParser):
+        calls = 0
+
+        def parse(self, path):
+            self.calls += 1
+            return super().parse(path)
+
+    parser = CountingParser()
+    parsing = ParsingService(store, {"text": parser})
+    pipeline = DocumentPipeline(store, embeddings, index, 'test-model', parsing=parsing)
     with TestClient(create_app(Settings(data_dir=tmp_path), pipeline)) as api:
         response = api.post('/documents', files={'file': ('notes.txt', b'Memory Lab preserves original content.\n\nEvery chunk cites source blocks.')})
         assert response.status_code == 201
@@ -35,6 +45,7 @@ def test_upload_process_retry_search_source(tmp_path):
         assert run['status'] == 'completed'
         assert api.post(url + '/process', json={'parser': 'text'}).json() == run
         assert embeddings.calls == 1
+        assert parser.calls == 1
         assert client.count(index.name(pipeline.namespace)).count == 1
         evidence = api.get('/search', params={'q': 'original'}).json()[0]
         assert evidence['chunk']['block_ids'] == ['text:0', 'text:1']
@@ -43,6 +54,7 @@ def test_upload_process_retry_search_source(tmp_path):
         # Rebuild an emptied index from saved artifacts without embedding again.
         client.delete_collection(index.name(pipeline.namespace))
         assert api.post(url + '/process', json={'parser': 'text'}).status_code == 200
+        assert parser.calls == 1  # retry/rebuild reuse the parsing artifact
         assert embeddings.calls == 2  # one process + one search
         assert client.count(index.name(pipeline.namespace)).count == 1
         assert api.post(url + '/process', json={'parser': 'text', 'chunker': 'hybrid'}).status_code == 422

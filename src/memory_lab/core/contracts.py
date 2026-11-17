@@ -1,10 +1,12 @@
 from pathlib import Path
 from typing import Protocol
-from memory_lab.core.models import Chunk, Document, Evidence, NormalizedDocument
+from memory_lab.core.models import Chunk, Evidence, NormalizedDocument, ParsedDocument
 
 
 class DocumentParser(Protocol):
-    def parse(self, path: Path, document: Document) -> tuple[NormalizedDocument, dict]: ...
+    @property
+    def version(self) -> str: ...
+    def parse(self, path: Path) -> ParsedDocument: ...
 
 
 class ChunkingStrategy(Protocol):

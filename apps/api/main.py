@@ -1,12 +1,11 @@
-import logging
 from uuid import UUID
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
-from pydantic import BaseModel, Field
 from qdrant_client import QdrantClient
 from memory_lab.core.config import Settings
 from memory_lab.core.models import PipelineConfig
+from memory_lab.documents.ingestion.service import IngestionService
 from memory_lab.documents.pipeline.service import DocumentPipeline
 from memory_lab.retrieval.embedding import OpenAIEmbeddings
 from memory_lab.storage.filesystem.store import FileStore
@@ -20,6 +19,7 @@ def create_app(settings: Settings | None = None, pipeline: DocumentPipeline | No
         embedding = OpenAIEmbeddings(settings.embedding_base_url, settings.embedding_api_key, settings.embedding_model)
         index = QdrantIndex(QdrantClient(url=settings.qdrant_url), settings.qdrant_collection)
         pipeline = DocumentPipeline(store, embedding, index, f"{settings.embedding_base_url}:{settings.embedding_model}")
+    ingestion = IngestionService(store)
     app = FastAPI(title="Memory Lab", version="0.1.0")
     app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origins, allow_methods=["GET", "POST"], allow_headers=["*"])
 
@@ -48,7 +48,7 @@ def create_app(settings: Settings | None = None, pipeline: DocumentPipeline | No
             raise HTTPException(413, "File exceeds MAX_UPLOAD_BYTES")
         if not content:
             raise HTTPException(422, "File is empty")
-        return store.ingest(file.filename or "document.txt", content, str(document_id) if document_id else None)
+        return ingestion.ingest(file.filename or "document.txt", content, str(document_id) if document_id else None)
 
     @app.get("/documents/{identity}/versions/{version}/source")
     def source(identity: str, version: str):

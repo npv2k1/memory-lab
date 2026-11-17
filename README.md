@@ -58,9 +58,13 @@ API tương ứng:
 | `apps/api` | HTTP adapter và dependency composition |
 | `apps/web` | Upload, processing, artifact inspector, retrieval playground |
 | `core` | Models, protocols, environment settings |
-| `documents/parsers` | Docling/text adapter → normalized blocks; giữ page, bbox, heading và source refs |
+| `documents/ingestion` | Nhận bytes, kiểm tra dữ liệu đầu vào và gọi raw storage |
+| `documents/parsers` | Docling/text adapter → ParsedDocument; giữ page, bbox, heading và source refs |
+| `documents/normalization` | Gắn identity/version và kiểm tra block IDs |
 | `documents/chunkers` | Fixed character windows hoặc Docling HybridChunker |
-| `documents/pipeline` | Điều phối, manifest, retry và versioned outputs |
+| `documents/enrichment` | Điểm mở rộng, chưa triển khai |
+| `documents/indexing` | Cache embeddings và upsert qua VectorIndex protocol |
+| `documents/pipeline` | Điều phối các stage, manifest, retry và versioned outputs |
 | `storage/filesystem` | Raw data, metadata, atomic artifacts và locks |
 | `storage/qdrant` | Rebuildable dense index |
 | `retrieval` | Embedding provider adapter |
@@ -93,3 +97,5 @@ Chưa có trước khi setup: toàn bộ source code và infrastructure. Sau set
 - 2 integration tests passed: FastAPI + Qdrant local + deterministic embedding stub, bao gồm retry/rebuild và failure recovery.
 - `bun run build` thành công (Astro 5.18.2).
 - Chưa chạy Docker Compose/PDF thực tế: môi trường setup không có Docker và chưa cấu hình embedding model.
+
+Chi tiết hợp đồng và ranh giới xử lý dữ liệu: [documents modules](src/memory_lab/documents/README.md).

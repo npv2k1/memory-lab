@@ -11,6 +11,11 @@ class Block(BaseModel):
     bbox: dict[str, Any] | None = None
 
 
+class ParsedDocument(BaseModel):
+    blocks: list[Block]
+    artifact: dict[str, Any] = Field(default_factory=dict)
+
+
 class NormalizedDocument(BaseModel):
     document_id: str
     version: str
