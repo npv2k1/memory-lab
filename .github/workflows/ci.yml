@@ -52,6 +52,7 @@ jobs:
           docker compose -f docker-compose.e2e.yml config --quiet
           docker compose -f docker-compose.prod.yml config --quiet
           DOMAIN=memory.example.com docker compose -f docker-compose.prod.yml --profile graph --profile tls config --quiet
+          docker compose -f docker-compose.enterprise.yml config --quiet
           REGISTRY_PREFIX=ghcr.io/${GITHUB_REPOSITORY,,} IMAGE_TAG=sha-$GITHUB_SHA DEPLOY_ENV_FILE=.env docker compose -f docker-compose.deploy.yml config --quiet
   e2e:
     runs-on: ubuntu-latest
@@ -101,8 +102,13 @@ jobs:
         include:
           - service: api
             context: .
+            target: production
+          - service: api-enterprise
+            context: .
+            target: enterprise
           - service: web
             context: ./apps/web
+            target: production
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
@@ -134,7 +140,7 @@ jobs:
       - uses: docker/build-push-action@v6
         with:
           context: ${{ matrix.context }}
-          target: production
+          target: ${{ matrix.target }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: |

@@ -63,6 +63,14 @@ import '../styles/app.css';
         <span>API Endpoint</span>
         <input id="api" value="/api" />
       </label>
+      <label class="api-box">
+        <span>Tenant / Workspace</span>
+        <input id="tenant-id" placeholder="default" />
+      </label>
+      <label class="api-box">
+        <span>API Key / Bearer (Enterprise)</span>
+        <input id="api-key" type="password" placeholder="mlab_... (tùy chọn)" />
+      </label>
       <p id="status" class="status-bar" role="status" aria-live="polite"></p>
     </div>
   </aside>
@@ -543,8 +551,21 @@ let atlasFilters: AtlasFilterState = {
   brushIds: null,
 };
 
+function authHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {};
+  const tenant = input('tenant-id')?.value.trim();
+  const key = input('api-key')?.value.trim();
+  if (tenant) headers['X-Tenant-ID'] = tenant;
+  if (key) {
+    if (key.toLowerCase().startsWith('bearer ')) headers['Authorization'] = key;
+    else headers['X-API-Key'] = key;
+  }
+  return headers;
+}
+
 async function request(path: string, init?: RequestInit) {
-  const response = await fetch(base() + path, init);
+  const mergedHeaders = { ...authHeaders(), ...(init?.headers as Record<string, string> | undefined) };
+  const response = await fetch(base() + path, { ...init, headers: mergedHeaders });
   if (!response.ok) throw new Error(await response.text());
   if (response.status === 204) return null;
   return response.json();
@@ -1795,6 +1816,8 @@ el('btn-compare').onclick = () => {
 };
 
 el('api').onchange = () => action(refreshAll);
+el('tenant-id').onchange = () => action(refreshAll);
+el('api-key').onchange = () => action(refreshAll);
 action(refreshAll);
 </script>
 </body>

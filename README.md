@@ -149,6 +149,7 @@ uv run --no-sync pytest
 
 Chi tiết hợp đồng và ranh giới xử lý dữ liệu: [documents modules](src/memory_lab/documents/README.md).
 Hướng dẫn tích hợp vào LLM & AI Agent (MCP, REST API, Tool Calling, Python SDK): [LLM integration guide](docs/llm-integration.md).
+Bản **Enterprise Production SaaS** (Multi-tenant, RBAC/JWT, Rate Limit, Async Workers, PostgreSQL, Redis, Qdrant, Neo4j, MinIO S3, Prometheus & Grafana): [Enterprise SaaS guide](docs/enterprise.md) · [`docker-compose.enterprise.yml`](docker-compose.enterprise.yml).
 
 ## Benchmark trên Google Colab
 

@@ -3,6 +3,7 @@ __pycache__/
 .venv/
 .env
 .env.prod
+.env.enterprise
 data/
 node_modules/
 dist/
