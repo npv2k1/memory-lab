@@ -1,69 +1,717 @@
 <!doctype html>
 <html lang="vi">
-<head><meta charset="utf-8"/><meta name="viewport" content="width=device-width"/><title>Memory Lab</title></head>
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Memory Lab — Document Core, Agent Memory & Experimentation</title>
+</head>
 <body>
 <main>
-<header><small>DOCUMENT PROCESSING · PHASE 1</small><h1>Memory Lab</h1><p>Khám phá tài liệu, pipeline và nguồn chứng cứ.</p></header>
-<label>API URL <input id="api" value="/api" /></label>
-<section><h2>1. Tài liệu</h2><form id="upload"><input type="file" id="file" accept=".pdf,.docx,.md,.txt,.html" required/><button>Upload</button></form><div id="documents"></div></section>
-<section><h2>2. Pipeline inspector</h2><p>Chọn Process trên tài liệu. PDF/DOCX dùng Docling; TXT/Markdown có thể dùng text.</p><label>Parser <select id="parser"><option>docling</option><option>text</option></select></label> <label>Chunker <select id="chunker"><option>fixed</option><option>hybrid</option></select></label><div id="runs"></div><pre id="artifact">Chọn artifact để xem.</pre></section>
-<section><h2>3. Retrieval playground</h2><form id="search"><input id="query" placeholder="Nội dung cần tìm…" required/><button>Tìm kiếm</button></form><div id="results"></div></section>
-<p id="status" role="status" aria-live="polite"></p>
+  <header class="topbar">
+    <div>
+      <small>DOCUMENT CORE · AGENT MEMORY · EXPERIMENTATION</small>
+      <h1>Memory Lab</h1>
+      <p class="subtitle">Nền tảng R&amp;D xử lý tài liệu, bộ nhớ dài hạn (Vector / Graph / ZeroToken / Hybrid) và benchmark truy xuất.</p>
+    </div>
+    <label class="api-box">
+      <span>API URL</span>
+      <input id="api" value="/api" />
+    </label>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Workspace tabs">
+    <button type="button" class="tab active" data-tab="documents" role="tab" aria-selected="true">1. Documents &amp; Pipeline</button>
+    <button type="button" class="tab" data-tab="memory" role="tab" aria-selected="false">2. Memory Playground</button>
+    <button type="button" class="tab" data-tab="experiments" role="tab" aria-selected="false">3. Experimentation &amp; Comparison</button>
+  </nav>
+
+  <!-- TAB 1: DOCUMENTS & PIPELINE (Phase 1 + 3 + 4) -->
+  <div id="tab-documents" class="tab-panel active">
+    <section class="card">
+      <h2>1. Tài liệu</h2>
+      <form id="upload" class="row-form">
+        <input type="file" id="file" accept=".pdf,.docx,.md,.txt,.html" required/>
+        <input id="upload-doc-id" placeholder="Optional document_id UUID (tạo version mới)" />
+        <button type="submit">Upload</button>
+      </form>
+      <div id="documents" class="list"></div>
+    </section>
+
+    <section class="card">
+      <h2>2. Pipeline inspector &amp; Stage cache</h2>
+      <p class="hint">Chọn Process trên tài liệu. PDF/DOCX dùng Docling; TXT/Markdown có thể dùng text. Enrichment tự động trích xuất entity/relation/temporal không dùng LLM.</p>
+      <div class="controls">
+        <label>Parser <select id="parser"><option value="docling">docling</option><option value="text">text</option></select></label>
+        <label>Chunker <select id="chunker"><option value="fixed">fixed</option><option value="hybrid">hybrid</option></select></label>
+        <label>Chunk size <input id="chunk-size" type="number" value="1200" min="100" max="10000" style="width:96px"/></label>
+        <label>Overlap <input id="chunk-overlap" type="number" value="150" min="0" style="width:84px"/></label>
+        <label class="checkbox-label"><input id="enrich-toggle" type="checkbox" checked/> Enrichment</label>
+      </div>
+      <div id="runs" class="list"></div>
+      <pre id="artifact">Chọn artifact để xem.</pre>
+    </section>
+
+    <section class="card">
+      <h2>3. Retrieval playground</h2>
+      <form id="search" class="row-form">
+        <input id="query" placeholder="Nội dung cần tìm…" required/>
+        <select id="search-mode" aria-label="Search mode">
+          <option value="dense">dense</option>
+          <option value="sparse">sparse (BM25)</option>
+          <option value="hybrid">hybrid (RRF)</option>
+        </select>
+        <input id="filter-doc-id" placeholder="Filter document_id (tùy chọn)" />
+        <input id="filter-run-id" placeholder="Filter pipeline_run_id (tùy chọn)" />
+        <button type="submit">Tìm kiếm</button>
+      </form>
+      <div id="results" class="list"></div>
+    </section>
+  </div>
+
+  <!-- TAB 2: MEMORY PLAYGROUND (Phase 2 + 3) -->
+  <div id="tab-memory" class="tab-panel">
+    <div class="grid-2">
+      <section class="card">
+        <h2>Lưu ký ức / Interaction trace</h2>
+        <form id="mem-store-form" class="stack-form">
+          <textarea id="mem-content" rows="4" placeholder="Ví dụ: Memory Lab uses Qdrant and Neo4j for hybrid retrieval since 2026-11-25." required></textarea>
+          <div class="controls">
+            <label>Strategy
+              <select id="mem-store-strategy">
+                <option value="hybrid">hybrid</option>
+                <option value="zero_token">zero_token</option>
+                <option value="graph">graph</option>
+                <option value="vector">vector</option>
+              </select>
+            </label>
+            <label>Session <input id="mem-session" value="default" style="width:120px"/></label>
+            <label>Role
+              <select id="mem-role">
+                <option value="user">user</option>
+                <option value="assistant">assistant</option>
+                <option value="system">system</option>
+                <option value="tool">tool</option>
+              </select>
+            </label>
+            <label>Tags <input id="mem-tags" placeholder="rag, architecture"/></label>
+          </div>
+          <button type="submit">Store memory</button>
+        </form>
+      </section>
+
+      <section class="card">
+        <h2>Tìm kiếm Memory</h2>
+        <form id="mem-search-form" class="stack-form">
+          <input id="mem-query" placeholder="Truy vấn ký ức…" required/>
+          <div class="controls">
+            <label>Strategy
+              <select id="mem-search-strategy">
+                <option value="hybrid">hybrid</option>
+                <option value="zero_token">zero_token</option>
+                <option value="graph">graph</option>
+                <option value="vector">vector</option>
+              </select>
+            </label>
+            <label>Session <input id="mem-search-session" placeholder="all" style="width:110px"/></label>
+            <label>Temporal <input id="mem-search-temporal" placeholder="YYYY-MM-DD" style="width:120px"/></label>
+            <label>Limit <input id="mem-search-limit" type="number" value="5" min="1" max="50" style="width:70px"/></label>
+          </div>
+          <button type="submit">Search memory</button>
+        </form>
+        <div id="mem-results" class="list"></div>
+      </section>
+    </div>
+
+    <section class="card">
+      <div class="section-head">
+        <h2>Memory Records, Temporal Hierarchy &amp; Knowledge Graph</h2>
+        <div class="controls">
+          <button type="button" class="secondary" id="btn-refresh-mem">Làm mới</button>
+          <input id="graph-entity-filter" placeholder="Lọc entity trong Graph…" />
+          <button type="button" class="secondary" id="btn-filter-graph">Xem Graph</button>
+        </div>
+      </div>
+      <div class="grid-3">
+        <div>
+          <h3>Records (<span id="mem-record-count">0</span>)</h3>
+          <div id="mem-records" class="list compact"></div>
+        </div>
+        <div>
+          <h3>Temporal Hierarchy</h3>
+          <pre id="mem-temporal" class="compact-pre">Chưa có dữ liệu.</pre>
+        </div>
+        <div>
+          <h3>Knowledge Graph</h3>
+          <pre id="mem-graph" class="compact-pre">Chưa có dữ liệu.</pre>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- TAB 3: EXPERIMENTATION & COMPARISON (Phase 4) -->
+  <div id="tab-experiments" class="tab-panel">
+    <div class="grid-2">
+      <section class="card">
+        <h2>1. Benchmark Datasets</h2>
+        <form id="exp-dataset-form" class="stack-form">
+          <input id="exp-ds-name" placeholder="Tên dataset (vd: core-retrieval-v1)" required/>
+          <input id="exp-ds-desc" placeholder="Mô tả ngắn"/>
+          <textarea id="exp-ds-cases" rows="5" placeholder='[{"query": "evidence", "relevant_substrings": ["Memory Lab"]}]' required></textarea>
+          <div class="controls">
+            <button type="submit">Tạo dataset</button>
+            <button type="button" class="secondary" id="btn-ds-sample">Chèn mẫu JSON</button>
+          </div>
+        </form>
+        <div id="exp-datasets" class="list compact"></div>
+      </section>
+
+      <section class="card">
+        <h2>2. Chạy Benchmark Experiment</h2>
+        <form id="exp-run-form" class="stack-form">
+          <input id="exp-run-name" placeholder="Tên cấu hình (vd: hybrid-rrf-k5)" required/>
+          <div class="controls">
+            <label>Dataset <select id="exp-run-dataset"></select></label>
+            <label>Target
+              <select id="exp-run-target">
+                <option value="documents">documents</option>
+                <option value="memory">memory</option>
+              </select>
+            </label>
+            <label>K <input id="exp-run-k" type="number" value="5" min="1" max="50" style="width:70px"/></label>
+          </div>
+          <div class="controls">
+            <label>Doc mode
+              <select id="exp-run-mode">
+                <option value="dense">dense</option>
+                <option value="sparse">sparse</option>
+                <option value="hybrid">hybrid</option>
+              </select>
+            </label>
+            <label>Memory strategy
+              <select id="exp-run-strategy">
+                <option value="hybrid">hybrid</option>
+                <option value="zero_token">zero_token</option>
+                <option value="graph">graph</option>
+                <option value="vector">vector</option>
+              </select>
+            </label>
+          </div>
+          <div class="controls">
+            <input id="exp-run-doc-filter" placeholder="Filter document_id (tùy chọn)"/>
+            <input id="exp-run-run-filter" placeholder="Filter pipeline_run_id (tùy chọn)"/>
+          </div>
+          <button type="submit">Chạy đánh giá (Recall@K / MRR / nDCG)</button>
+        </form>
+      </section>
+    </div>
+
+    <section class="card">
+      <div class="section-head">
+        <h2>3. Comparison UI (Recall@K · MRR · nDCG@K · Latency)</h2>
+        <button type="button" id="btn-compare">So sánh các báo cáo đã chọn</button>
+      </div>
+      <div id="exp-reports" class="list compact"></div>
+      <div id="exp-comparison" class="table-wrap"></div>
+    </section>
+  </div>
+
+  <p id="status" role="status" aria-live="polite"></p>
 </main>
+
 <script>
 const el = (id: string) => document.getElementById(id)!;
 const input = (id: string) => el(id) as HTMLInputElement;
+const select = (id: string) => el(id) as HTMLSelectElement;
 const base = () => input('api').value.replace(/\/$/, '');
+
 async function request(path: string, init?: RequestInit) {
   const response = await fetch(base() + path, init);
   if (!response.ok) throw new Error(await response.text());
+  if (response.status === 204) return null;
   return response.json();
 }
+
 async function action(work: () => Promise<void>) {
   el('status').textContent = 'Đang xử lý…';
-  try { await work(); el('status').textContent = 'Hoàn tất.'; }
-  catch (error) { el('status').textContent = String(error); }
+  try {
+    await work();
+    el('status').textContent = 'Hoàn tất.';
+  } catch (error) {
+    el('status').textContent = String(error);
+  }
 }
-function button(label: string, work: () => Promise<void>) {
-  const node = document.createElement('button'); node.textContent = label;
-  node.onclick = () => action(work); return node;
+
+function button(label: string, work: () => Promise<void>, className = '') {
+  const node = document.createElement('button');
+  node.type = 'button';
+  node.textContent = label;
+  if (className) node.className = className;
+  node.onclick = () => action(work);
+  return node;
 }
-async function refresh() {
-  const docs = await request('/documents'); el('documents').replaceChildren();
+
+function pill(text: string) {
+  const span = document.createElement('span');
+  span.className = 'pill';
+  span.textContent = text;
+  return span;
+}
+
+// --- Tab navigation ---
+for (const tabBtn of document.querySelectorAll<HTMLButtonElement>('.tab')) {
+  tabBtn.onclick = () => {
+    const target = tabBtn.dataset.tab!;
+    document.querySelectorAll('.tab').forEach((b) => {
+      const active = b === tabBtn;
+      b.classList.toggle('active', active);
+      b.setAttribute('aria-selected', String(active));
+    });
+    document.querySelectorAll('.tab-panel').forEach((p) => {
+      p.classList.toggle('active', p.id === `tab-${target}`);
+    });
+  };
+}
+
+// --- Phase 1, 3, 4: Documents & Pipeline ---
+async function refreshDocuments() {
+  const docs = await request('/documents');
+  el('documents').replaceChildren();
   for (const doc of docs) {
     const row = document.createElement('article');
-    const title = document.createElement('p'); title.textContent = `${doc.filename} · ${doc.version.slice(0, 10)}`; row.append(title);
-    row.append(button('Process', async () => {
-      await request(`/documents/${doc.id}/versions/${doc.version}/process`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({parser:input('parser').value,chunker:input('chunker').value})});
-      await refresh();
-    }));
+    const title = document.createElement('p');
+    title.textContent = `${doc.filename} · ${doc.version.slice(0, 10)}`;
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    meta.append(pill(`doc:${doc.id.slice(0, 10)}`));
+    row.append(title, meta);
+    row.append(
+      button('Process', async () => {
+        const payload = {
+          parser: select('parser').value,
+          chunker: select('chunker').value,
+          chunk_size: Number(input('chunk-size').value || 1200),
+          overlap: Number(input('chunk-overlap').value || 150),
+          enrich: input('enrich-toggle').checked,
+        };
+        await request(`/documents/${doc.id}/versions/${doc.version}/process`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        await refreshDocuments();
+      })
+    );
     el('documents').append(row);
   }
-  const runs = await request('/runs'); el('runs').replaceChildren();
+
+  const runs = await request('/runs');
+  el('runs').replaceChildren();
   for (const run of runs) {
     const row = document.createElement('article');
-    const title = document.createElement('p'); title.textContent = `${run.pipeline_run_id.slice(0, 12)} · ${run.status}`; row.append(title);
-    for (const artifact of ['manifest', 'normalized', 'chunks']) row.append(button(artifact, async () => { el('artifact').textContent = JSON.stringify(await request(`/runs/${run.pipeline_run_id}/${artifact}`), null, 2); }));
+    const title = document.createElement('p');
+    const enrichSummary = run.enrichment_summary
+      ? ` · entities:${run.enrichment_summary.entity_count} rels:${run.enrichment_summary.relation_count}`
+      : '';
+    title.textContent = `${run.pipeline_run_id.slice(0, 12)} · ${run.status}${enrichSummary}`;
+    row.append(title);
+
+    const actions = document.createElement('div');
+    actions.className = 'controls';
+    for (const artifact of ['manifest', 'normalized', 'chunks', 'enriched']) {
+      actions.append(
+        button(artifact, async () => {
+          el('artifact').textContent = JSON.stringify(
+            await request(`/runs/${run.pipeline_run_id}/${artifact}`),
+            null,
+            2
+          );
+        })
+      );
+    }
+
+    const stageSelect = document.createElement('select');
+    for (const stage of ['parse', 'normalize', 'chunk', 'enrich', 'index']) {
+      const opt = document.createElement('option');
+      opt.value = stage;
+      opt.textContent = `invalidate:${stage}`;
+      stageSelect.append(opt);
+    }
+    actions.append(
+      stageSelect,
+      button(
+        'Invalidate',
+        async () => {
+          const updated = await request(`/runs/${run.pipeline_run_id}/invalidate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ stages: [stageSelect.value] }),
+          });
+          el('artifact').textContent = JSON.stringify(updated, null, 2);
+          await refreshDocuments();
+        },
+        'secondary'
+      )
+    );
+    row.append(actions);
     el('runs').append(row);
   }
 }
-el('upload').onsubmit = (event) => { event.preventDefault(); action(async () => {
-  const file = (input('file').files || [])[0]; if (!file) return;
-  const body = new FormData(); body.append('file',file); await request('/documents',{method:'POST',body}); await refresh();
-}); };
-el('search').onsubmit = (event) => { event.preventDefault(); action(async () => {
-  const hits = await request(`/search?q=${encodeURIComponent(input('query').value)}`); el('results').replaceChildren();
-  if (!hits.length) el('results').textContent = 'Chưa có kết quả.';
-  for (const hit of hits) {
-    const row = document.createElement('article'); const text = document.createElement('p'); text.textContent = hit.chunk.text;
-    const source = document.createElement('a'); source.href = base() + hit.source_url; source.textContent = `Nguồn · score ${hit.score.toFixed(3)} · blocks ${hit.chunk.block_ids.join(', ')}`;
-    row.append(text,source); el('results').append(row);
+
+// --- Phase 2 & 3: Memory Playground ---
+async function refreshMemory() {
+  const [records, temporal, graph] = await Promise.all([
+    request('/memory/records?limit=50'),
+    request('/memory/temporal'),
+    request('/memory/graph' + (input('graph-entity-filter').value ? `?entity=${encodeURIComponent(input('graph-entity-filter').value)}` : '')),
+  ]);
+
+  el('mem-record-count').textContent = String(records.length);
+  el('mem-records').replaceChildren();
+  for (const rec of records) {
+    const row = document.createElement('article');
+    const p = document.createElement('p');
+    p.textContent = rec.summary || rec.content;
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    meta.append(pill(rec.strategy), pill(`session:${rec.session_id}`), pill(rec.timestamp.slice(0, 10)));
+    if (rec.entities?.length) meta.append(pill(`entities:${rec.entities.map((e: any) => e.name).slice(0, 3).join(', ')}`));
+    const controls = document.createElement('div');
+    controls.className = 'controls';
+    controls.append(
+      button('Delete', async () => {
+        await request(`/memory/records/${rec.id}`, { method: 'DELETE' });
+        await refreshMemory();
+      }, 'danger')
+    );
+    row.append(p, meta, controls);
+    el('mem-records').append(row);
   }
-}); };
-el('api').onchange = () => action(refresh);
-action(refresh);
+
+  el('mem-temporal').textContent = JSON.stringify(temporal, null, 2);
+  el('mem-graph').textContent = JSON.stringify(graph, null, 2);
+}
+
+// --- Phase 4: Experimentation & Comparison ---
+async function refreshExperiments() {
+  const [datasets, reports] = await Promise.all([
+    request('/experiments/datasets'),
+    request('/experiments/reports'),
+  ]);
+
+  el('exp-datasets').replaceChildren();
+  const dsSelect = select('exp-run-dataset');
+  const prevSelected = dsSelect.value;
+  dsSelect.replaceChildren();
+  for (const ds of datasets) {
+    const row = document.createElement('article');
+    const p = document.createElement('p');
+    p.textContent = `${ds.name} (${ds.cases.length} cases)`;
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    meta.append(pill(`id:${ds.id}`), pill(`hash:${ds.dataset_hash.slice(0, 10)}`));
+    row.append(p, meta);
+    el('exp-datasets').append(row);
+
+    const opt = document.createElement('option');
+    opt.value = ds.id;
+    opt.textContent = `${ds.name} (${ds.id})`;
+    dsSelect.append(opt);
+  }
+  if (prevSelected) dsSelect.value = prevSelected;
+
+  el('exp-reports').replaceChildren();
+  for (const rep of reports) {
+    const row = document.createElement('article');
+    const label = document.createElement('label');
+    label.className = 'checkbox-label';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.className = 'report-check';
+    cb.value = rep.id;
+    cb.checked = true;
+    label.append(cb, ` ${rep.name} [${rep.target}]`);
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    meta.append(
+      pill(`Recall@${rep.k}: ${rep.metrics.recall_at_k.toFixed(3)}`),
+      pill(`MRR: ${rep.metrics.mrr.toFixed(3)}`),
+      pill(`nDCG@${rep.k}: ${rep.metrics.ndcg_at_k.toFixed(3)}`),
+      pill(`${rep.metrics.avg_latency_ms.toFixed(1)} ms`)
+    );
+    row.append(label, meta);
+    el('exp-reports').append(row);
+  }
+}
+
+function renderComparison(comparison: any) {
+  const wrap = el('exp-comparison');
+  wrap.replaceChildren();
+  const info = document.createElement('p');
+  info.className = 'hint';
+  info.textContent = `Baseline: ${comparison.baseline_id} · Dataset hash match: ${comparison.same_dataset_hash ? 'YES' : 'DIFFERS'}`;
+  wrap.append(info);
+
+  const table = document.createElement('table');
+  table.innerHTML = `<thead><tr><th>Run</th><th>Target / Config</th><th>Dataset Hash</th><th>Recall@K</th><th>MRR</th><th>nDCG@K</th><th>Latency (ms)</th></tr></thead>`;
+  const tbody = document.createElement('tbody');
+  for (const row of comparison.reports) {
+    const tr = document.createElement('tr');
+    const cfg = row.target === 'documents'
+      ? `docs · ${row.config_snapshot.search_mode}`
+      : `memory · ${row.config_snapshot.resolved_memory_strategy}`;
+    const fmtDelta = (val: number) => (val === 0 ? '' : ` (${val > 0 ? '+' : ''}${val.toFixed(3)})`);
+    const tdName = document.createElement('td');
+    const strong = document.createElement('strong');
+    strong.textContent = row.name;
+    const br = document.createElement('br');
+    const small = document.createElement('small');
+    small.textContent = row.id;
+    tdName.append(strong, br, small);
+
+    const tdCfg = document.createElement('td');
+    tdCfg.textContent = cfg;
+
+    const tdHash = document.createElement('td');
+    const code = document.createElement('code');
+    code.textContent = row.dataset_hash.slice(0, 10);
+    tdHash.append(code);
+
+    const cells = [
+      `${row.metrics.recall_at_k.toFixed(3)}${fmtDelta(row.delta_vs_baseline.recall_at_k)}`,
+      `${row.metrics.mrr.toFixed(3)}${fmtDelta(row.delta_vs_baseline.mrr)}`,
+      `${row.metrics.ndcg_at_k.toFixed(3)}${fmtDelta(row.delta_vs_baseline.ndcg_at_k)}`,
+      row.metrics.avg_latency_ms.toFixed(2),
+    ];
+    tr.append(tdName, tdCfg, tdHash);
+    for (const val of cells) {
+      const td = document.createElement('td');
+      td.textContent = val;
+      tr.append(td);
+    }
+    tbody.append(tr);
+  }
+  table.append(tbody);
+  wrap.append(table);
+}
+
+async function refreshAll() {
+  await Promise.all([refreshDocuments(), refreshMemory(), refreshExperiments()]);
+}
+
+// --- Event bindings ---
+el('upload').onsubmit = (event) => {
+  event.preventDefault();
+  action(async () => {
+    const file = (input('file').files || [])[0];
+    if (!file) return;
+    const body = new FormData();
+    body.append('file', file);
+    const docId = input('upload-doc-id').value.trim();
+    const qs = docId ? `?document_id=${encodeURIComponent(docId)}` : '';
+    await request('/documents' + qs, { method: 'POST', body });
+    await refreshDocuments();
+  });
+};
+
+el('search').onsubmit = (event) => {
+  event.preventDefault();
+  action(async () => {
+    const params = new URLSearchParams({
+      q: input('query').value,
+      mode: select('search-mode').value,
+    });
+    const docId = input('filter-doc-id').value.trim();
+    const runId = input('filter-run-id').value.trim();
+    if (docId) params.set('document_id', docId);
+    if (runId) params.set('pipeline_run_id', runId);
+
+    const hits = await request(`/search?${params.toString()}`);
+    el('results').replaceChildren();
+    if (!hits.length) el('results').textContent = 'Chưa có kết quả.';
+    for (const hit of hits) {
+      const row = document.createElement('article');
+      const text = document.createElement('p');
+      text.textContent = hit.chunk.text;
+      const source = document.createElement('a');
+      source.href = base() + hit.source_url;
+      source.textContent = `Nguồn · score ${hit.score.toFixed(3)} · blocks ${hit.chunk.block_ids.join(', ')}`;
+      row.append(text, source);
+      if (hit.score_breakdown && Object.keys(hit.score_breakdown).length) {
+        const meta = document.createElement('div');
+        meta.className = 'meta';
+        for (const [k, v] of Object.entries(hit.score_breakdown)) {
+          meta.append(pill(`${k}:${Number(v).toFixed(3)}`));
+        }
+        row.append(meta);
+      }
+      el('results').append(row);
+    }
+  });
+};
+
+el('mem-store-form').onsubmit = (event) => {
+  event.preventDefault();
+  action(async () => {
+    const tags = input('mem-tags').value.split(',').map((t) => t.trim()).filter(Boolean);
+    await request('/memory/store', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        content: (el('mem-content') as HTMLTextAreaElement).value,
+        session_id: input('mem-session').value.trim() || 'default',
+        role: select('mem-role').value,
+        strategy: select('mem-store-strategy').value,
+        tags,
+      }),
+    });
+    (el('mem-content') as HTMLTextAreaElement).value = '';
+    await refreshMemory();
+  });
+};
+
+el('mem-search-form').onsubmit = (event) => {
+  event.preventDefault();
+  action(async () => {
+    const hits = await request('/memory/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query: input('mem-query').value,
+        strategy: select('mem-search-strategy').value,
+        limit: Number(input('mem-search-limit').value || 5),
+        session_id: input('mem-search-session').value.trim() || null,
+        temporal_bucket: input('mem-search-temporal').value.trim() || null,
+      }),
+    });
+    el('mem-results').replaceChildren();
+    if (!hits.length) {
+      el('mem-results').textContent = 'Không tìm thấy ký ức phù hợp.';
+      return;
+    }
+    for (const hit of hits) {
+      const row = document.createElement('article');
+      const p = document.createElement('p');
+      p.textContent = hit.record.content;
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+      meta.append(pill(`${hit.strategy} · ${hit.score.toFixed(4)}`));
+      for (const [k, v] of Object.entries(hit.score_breakdown || {})) {
+        meta.append(pill(`${k}:${Number(v).toFixed(3)}`));
+      }
+      row.append(p, meta);
+      el('mem-results').append(row);
+    }
+  });
+};
+
+el('btn-refresh-mem').onclick = () => action(refreshMemory);
+el('btn-filter-graph').onclick = () => action(refreshMemory);
+
+el('btn-ds-sample').onclick = () => {
+  (el('exp-ds-cases') as HTMLTextAreaElement).value = JSON.stringify(
+    [
+      { query: 'Memory Lab provenance evidence', relevant_substrings: ['Memory Lab'] },
+      { query: 'Qdrant Neo4j hybrid retrieval', relevant_substrings: ['Qdrant'] },
+    ],
+    null,
+    2
+  );
+};
+
+el('exp-dataset-form').onsubmit = (event) => {
+  event.preventDefault();
+  action(async () => {
+    const cases = JSON.parse((el('exp-ds-cases') as HTMLTextAreaElement).value);
+    await request('/experiments/datasets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: input('exp-ds-name').value.trim(),
+        description: input('exp-ds-desc').value.trim(),
+        cases,
+      }),
+    });
+    await refreshExperiments();
+  });
+};
+
+el('exp-run-form').onsubmit = (event) => {
+  event.preventDefault();
+  action(async () => {
+    const target = select('exp-run-target').value;
+    await request('/experiments/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: input('exp-run-name').value.trim(),
+        dataset_id: select('exp-run-dataset').value,
+        target,
+        k: Number(input('exp-run-k').value || 5),
+        search_mode: select('exp-run-mode').value,
+        memory_strategy: target === 'memory' ? select('exp-run-strategy').value : null,
+        document_id: input('exp-run-doc-filter').value.trim() || null,
+        pipeline_run_id: input('exp-run-run-filter').value.trim() || null,
+      }),
+    });
+    await refreshExperiments();
+  });
+};
+
+el('btn-compare').onclick = () => {
+  action(async () => {
+    const ids = Array.from(document.querySelectorAll<HTMLInputElement>('.report-check:checked')).map((c) => c.value);
+    if (!ids.length) throw new Error('Chọn ít nhất 1 báo cáo để so sánh.');
+    const comparison = await request(`/experiments/compare?ids=${encodeURIComponent(ids.join(','))}`);
+    renderComparison(comparison);
+  });
+};
+
+el('api').onchange = () => action(refreshAll);
+action(refreshAll);
 </script>
+
 <style>
-:global(body){margin:0;background:#101719;color:#e1e9e5;font:16px/1.6 system-ui}main{max-width:980px;margin:auto;padding:40px 24px}header{margin-bottom:36px}h1{font-size:48px;margin:6px 0}small{color:#91d8b0;letter-spacing:2px}h2{font-size:22px}section{border-top:1px solid #34433e;margin-top:32px;padding-top:16px}input,select,button{font:inherit;padding:9px 12px;border-radius:6px;border:1px solid #465951;background:#1b2822;color:inherit;margin:4px}button{cursor:pointer;background:#a8e9c2;color:#102217}article{padding:14px 0;border-bottom:1px solid #2b3932}a{color:#a8e9c2}pre{overflow:auto;max-height:420px;background:#080e0b;padding:16px;font-size:13px;white-space:pre-wrap}#status{position:sticky;bottom:12px;background:#22372b;padding:12px}form{display:flex;flex-wrap:wrap}#query{flex:1;min-width:150px}@media(max-width:600px){main{padding:20px 12px}h1{font-size:36px}input{max-width:85%}}
+  :global(body) { margin: 0; background: #0d1416; color: #e2ebe6; font: 15px/1.55 system-ui, -apple-system, sans-serif; }
+  main { max-width: 1160px; margin: auto; padding: 28px 20px 72px; }
+  .topbar { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+  h1 { font-size: 38px; margin: 4px 0; letter-spacing: -0.5px; }
+  h2 { font-size: 19px; margin: 0 0 12px; color: #c7f2d8; }
+  h3 { font-size: 15px; margin: 0 0 8px; color: #9ec9b0; }
+  small { color: #8ad6ab; letter-spacing: 1.8px; font-weight: 600; }
+  .subtitle, .hint { color: #9db2a8; margin: 4px 0 12px; font-size: 14px; }
+  .api-box { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #9db2a8; }
+  .tabs { display: flex; gap: 8px; flex-wrap: wrap; border-bottom: 1px solid #263630; padding-bottom: 10px; margin-bottom: 20px; }
+  .tab { background: #16221e; color: #b7cfc2; border: 1px solid #2d423a; }
+  .tab.active { background: #a8e9c2; color: #0d2116; border-color: #a8e9c2; font-weight: 600; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+  .card { background: #131d1f; border: 1px solid #24342f; border-radius: 10px; padding: 18px; margin-bottom: 18px; }
+  .section-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+  .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 18px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+  .row-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
+  .stack-form { display: flex; flex-direction: column; gap: 8px; }
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .checkbox-label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+  input, select, textarea, button { font: inherit; padding: 8px 11px; border-radius: 6px; border: 1px solid #354b43; background: #192623; color: inherit; }
+  textarea { resize: vertical; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 13px; }
+  button { cursor: pointer; background: #a8e9c2; color: #0e2217; border-color: #a8e9c2; font-weight: 500; }
+  button.secondary { background: #1e2f2a; color: #d5ece0; border-color: #3d574d; }
+  button.danger { background: #3b1f22; color: #f7b8bf; border-color: #6b353c; }
+  #query { flex: 1; min-width: 180px; }
+  article { padding: 12px 0; border-bottom: 1px solid #22302b; }
+  article:last-child { border-bottom: none; }
+  article p { margin: 0 0 6px; }
+  .meta { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; background: #1d2f29; color: #a7dfc0; border: 1px solid #2f4a40; }
+  a { color: #a8e9c2; }
+  pre { overflow: auto; max-height: 380px; background: #09100e; border: 1px solid #1e2d28; border-radius: 8px; padding: 14px; font-size: 12.5px; white-space: pre-wrap; margin: 10px 0 0; }
+  .compact-pre { max-height: 300px; }
+  .table-wrap { overflow-x: auto; margin-top: 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid #24342f; }
+  th { color: #9eddb9; background: #0f181a; }
+  #status { position: sticky; bottom: 12px; background: #1d3228; border: 1px solid #355848; border-radius: 8px; padding: 10px 14px; margin-top: 16px; }
 </style>
-</body></html>
+</body>
+</html>

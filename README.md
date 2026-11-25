@@ -1,14 +1,14 @@
 # Memory Lab
 
-Nền tảng R&D bộ nhớ dài hạn cho agent. Repository mới, triển khai vertical slice Phase 1; chưa triển khai Phase 2–4.
+Nền tảng R&D xử lý tài liệu, bộ nhớ dài hạn cho agent và đánh giá truy xuất (đã triển khai đầy đủ Phase 1–4).
 
 ## Khởi chạy
 
-Yêu cầu Docker Compose, hoặc Python 3.12+ và Bun. Embedding endpoint phải hỗ trợ OpenAI `/v1/embeddings`.
+Yêu cầu Docker Compose, hoặc Python 3.12+ (`uv`) và Bun `1.4.4`. Embedding endpoint phải hỗ trợ OpenAI `/v1/embeddings` (các chiến lược `sparse`, `zero_token` và `graph` chạy được không cần embedding server).
 
 ```bash
 cp .env.example .env
-# Điền EMBEDDING_BASE_URL, EMBEDDING_MODEL và EMBEDDING_API_KEY nếu cần.
+# Điền EMBEDDING_BASE_URL, EMBEDDING_MODEL và EMBEDDING_API_KEY nếu dùng dense/vector.
 docker compose up --build
 ```
 
@@ -19,7 +19,9 @@ Docling tải model lần đầu; cần mạng và có thể mất vài phút. I
 Chạy development:
 
 ```bash
-uv sync --locked --extra docling --extra dev
+uv sync --locked --extra dev --extra e2e
+# Nếu cần parse PDF/DOCX bằng Docling:
+# uv sync --locked --extra docling --extra dev
 docker compose up -d qdrant
 uv run uvicorn apps.api.main:create_app --factory --reload
 # Terminal khác:
@@ -28,75 +30,92 @@ bun install --frozen-lockfile
 bun run dev
 ```
 
+Chạy MCP server qua stdio cho agent:
+
+```bash
+uv run --no-sync python -m memory_lab.mcp
+```
+
 Kiểm tra trong virtualenv:
 
 ```bash
-uv run pytest
+uv run --no-sync pytest
 ```
 
 ## Sử dụng
 
-1. Upload PDF/DOCX/TXT/Markdown/HTML trên web.
-2. Chọn parser và chunker, bấm Process. TXT/Markdown hỗ trợ parser `text` để thử không cần Docling.
-3. Xem manifest, normalized blocks và chunks trong inspector.
-4. Search để xem score, chunk, block references và tải tài liệu gốc.
+1. **Tab 1 — Documents & Pipeline**:
+   - Upload PDF/DOCX/TXT/Markdown/HTML (có thể truyền `document_id` UUID để nhóm version).
+   - Chọn parser (`docling`/`text`), chunker (`fixed`/`hybrid`), `chunk_size`, `overlap`, bật/tắt `enrichment`, bấm `Process`.
+   - Xem `manifest`, `normalized`, `chunks`, `enriched` và xóa cache từng stage qua `Invalidate`.
+   - Tìm kiếm ở chế độ `dense`, `sparse` (BM25) hoặc `hybrid` (RRF), lọc theo `document_id` / `pipeline_run_id`, xem `score_breakdown` và tải nguồn gốc.
+2. **Tab 2 — Memory Playground**:
+   - Lưu interaction trace theo các chiến lược `hybrid`, `zero_token`, `graph`, `vector`.
+   - Tìm kiếm memory theo strategy, `session_id`, `temporal_bucket` (`YYYY`, `YYYY-MM`, `YYYY-MM-DD`).
+   - Xem & xóa records, kiểm tra **Temporal Hierarchy** (`year → month → day → session`) và **Knowledge Graph**.
+3. **Tab 3 — Experimentation & Comparison**:
+   - Tạo benchmark dataset (tự động tính `dataset_hash` cố định).
+   - Chạy đánh giá trên `documents` (`dense`/`sparse`/`hybrid`) hoặc `memory` (`zero_token`/`graph`/`vector`/`hybrid`) để đo `Recall@K`, `MRR`, `nDCG@K` và độ trễ.
+   - So sánh nhiều báo cáo song song với delta so với baseline.
 
-API tương ứng:
+## API chính
 
-- `POST /documents` multipart `file`; optional `document_id` UUID để tạo version cùng document.
-- `GET /documents` danh sách các version.
-- `POST /documents/{id}/versions/{version}/process` JSON `{"parser":"docling","chunker":"fixed","chunk_size":1200,"overlap":150}`.
-- `GET /runs`, `GET /runs/{id}/{manifest|normalized|chunks}`.
-- `GET /search?q=...&limit=5`.
-- `GET /documents/{id}/versions/{version}/source`.
-- `GET /health` chỉ kiểm tra tiến trình API, không kiểm tra infrastructure.
+### Documents, Pipeline & Retrieval (Phase 1, 3, 4)
+
+- `POST /documents` multipart `file`; optional `document_id` UUID.
+- `GET /documents` danh sách các document version.
+- `GET /documents/{id}/versions/{version}/source` tải file gốc.
+- `POST /documents/{id}/versions/{version}/process` JSON `{"parser":"docling","chunker":"fixed","chunk_size":1200,"overlap":150,"enrich":true}`.
+- `GET /runs`, `GET /runs/{id}/{manifest|normalized|chunks|enriched}`.
+- `POST /runs/{id}/invalidate` JSON `{"stages":["parse"|"normalize"|"chunk"|"enrich"|"index"]}`.
+- `GET /search?q=...&limit=5&mode=dense|sparse|hybrid&document_id=...&version=...&pipeline_run_id=...`.
+
+### Agent Memory & MCP (Phase 2, 3)
+
+- `POST /memory/store` lưu raw trace và index memory record.
+- `POST /memory/search` & `GET /memory/search?q=...&strategy=hybrid|zero_token|graph|vector&limit=5&session_id=...&temporal_bucket=...`.
+- `GET /memory/records`, `GET /memory/records/{id}`, `DELETE /memory/records/{id}`.
+- `GET /memory/traces` danh sách raw interaction traces bất biến.
+- `GET /memory/temporal` phân cấp thời gian `year → month → day → session`.
+- `GET /memory/graph?entity=...` snapshot đồ thị thực thể/quan hệ.
+- `POST /mcp` JSON-RPC 2.0 MCP endpoint (`initialize`, `tools/list`, `tools/call` với `memory_store`, `memory_search`, `memory_get`, `memory_delete`).
+
+### Experimentation (Phase 4)
+
+- `GET /experiments/datasets`, `POST /experiments/datasets`, `GET /experiments/datasets/{id}`.
+- `POST /experiments/run` chạy benchmark và lưu `config_snapshot` + `dataset_hash`.
+- `GET /experiments/reports`, `GET /experiments/reports/{id}`.
+- `GET /experiments/compare?ids=id1,id2,...` so sánh metrics và delta theo baseline.
+- `GET /health` kiểm tra liveness của tiến trình API.
 
 ## Boundaries
 
 | Module | Trách nhiệm |
 |---|---|
-| `apps/api` | HTTP adapter và dependency composition |
-| `apps/web` | Upload, processing, artifact inspector, retrieval playground |
+| `apps/api` | HTTP adapter, MCP HTTP endpoint và dependency composition |
+| `apps/web` | Documents/Pipeline inspector, Memory Playground, Experimentation & Comparison UI |
 | `core` | Models, protocols, environment settings |
 | `documents/ingestion` | Nhận bytes, kiểm tra dữ liệu đầu vào và gọi raw storage |
-| `documents/parsers` | Docling/text adapter → ParsedDocument; giữ page, bbox, heading và source refs |
+| `documents/parsers` | Docling/text adapter → `ParsedDocument`; giữ page, bbox, heading và source refs |
 | `documents/normalization` | Gắn identity/version và kiểm tra block IDs |
 | `documents/chunkers` | Fixed character windows hoặc Docling HybridChunker |
-| `documents/enrichment` | Điểm mở rộng, chưa triển khai |
-| `documents/indexing` | Cache embeddings và upsert qua VectorIndex protocol |
-| `documents/pipeline` | Điều phối các stage, manifest, retry và versioned outputs |
-| `storage/filesystem` | Raw data, metadata, atomic artifacts và locks |
-| `storage/qdrant` | Rebuildable dense index |
-| `retrieval` | Embedding provider adapter |
+| `documents/enrichment` | Non-generative entity, relation, temporal và keyword extraction (không gọi LLM) |
+| `documents/indexing` | Cache embeddings và upsert qua `VectorIndex` protocol |
+| `documents/pipeline` | Điều phối các stage, manifest, retry, stage invalidation và filtered/hybrid search |
+| `memory` | `TraceStore`, `TemporalHierarchy`, `VectorMemory`, `GraphMemory`, `ZeroTokenMemory`, `HybridMemory`, `MemoryService` |
+| `mcp` | MCP JSON-RPC 2.0 adapter (stdio + HTTP) cho `memory_store/search/get/delete` |
+| `experiments` | Datasets với `dataset_hash`, `Recall@K`/`MRR`/`nDCG@K`, config snapshots và comparison |
+| `retrieval` | Embedding provider, Okapi BM25 sparse index và Reciprocal Rank Fusion (RRF) |
+| `storage/filesystem` | Source of truth: raw data, metadata, atomic artifacts, traces, records và locks |
+| `storage/qdrant` | Rebuildable dense index có metadata payload filtering |
+| `storage/graph` | `FileGraphStore` mặc định và `Neo4jGraphStore` HTTP adapter tùy chọn |
 
-## Quyết định và giới hạn Phase 1
+## Trạng thái các Phase
 
-- Filesystem là dữ liệu gốc. Qdrant không phải bản lưu duy nhất. Lưu normalized/chunks/vectors độc lập để có thể rebuild index.
-- Content hash xác định version; upload trùng nội dung trả cùng identity. Truyền document UUID khi muốn chủ động nhóm nhiều version.
-- Run ID phụ thuộc document/version, parser version, chunk config, embedding endpoint/model và pipeline revision. Retry cùng config tái sử dụng artifacts và upsert chunk UUID cố định. Thay config tạo run mới.
-- Mỗi run giữ snapshot đầy đủ. Chưa chia sẻ stage cache giữa các config khác nhau. Muốn chạy lại stage đã thành công hiện cần tạo config/revision mới; chưa có API invalidation từng stage.
-- Search chỉ tìm namespace của embedding endpoint/model hiện tại; giữ evidence từ mọi document version/run đã index. Khi so sánh thí nghiệm cần bổ sung filter run/version ở Phase 4.
-- Fixed chunking theo ký tự, có overlap và block references. Hybrid sử dụng Docling artifact qua adapter; không đưa kiểu Docling vào business contracts.
-- Processing đồng bộ, chạy trong threadpool của FastAPI; lỗi giữ manifest `failed`. Redis worker/queue và progress realtime chưa triển khai.
-- Neo4j/Redis dành cho phase sau, bật bằng `docker compose --profile memory up -d neo4j redis`.
-- Đây là môi trường local, không có authentication; ports Compose chỉ bind loopback. Không expose trực tiếp ra Internet.
-- Dependencies được khóa bằng `uv.lock` và `apps/web/bun.lock`. Khi benchmark cần lưu thêm model revision/weights và dataset hash.
-- Cần thay embedding model name/config khi thay weights trên cùng endpoint; namespace không tự phát hiện weights thay đổi.
-
-## Kế hoạch theo dependency
-
-1. **Foundation + Document Core (hiện tại):** contracts → ingestion/raw → parsers → normalization → chunking → artifacts → embeddings/Qdrant → API/web.
-2. **Memory Foundation (chưa làm):** interaction schema/raw traces → MemoryStrategy → VectorMemory/GraphMemory → services → MCP adapter (`memory_store/search/get/delete`).
-3. **Advanced Memory (chưa làm):** HybridMemory, ZeroTokenMemory, non-generative extraction, temporal hierarchy, sparse/BM25 và evidence fusion.
-4. **Experimentation (chưa làm):** stage cache/invalidation API, run filters, dataset/config snapshots, Recall@K/MRR/nDCG và comparison UI.
-
-Chưa có trước khi setup: toàn bộ source code và infrastructure. Sau setup: Phase 1 đã có code; PDF/Docling và Docker cần được chạy với model/infrastructure thực tế để xác nhận integration. Tests dùng Qdrant local và embedding stub, không đo chất lượng semantic hay thay thế kiểm tra PDF thực tế.
-
-## Kiểm tra tại thời điểm bàn giao
-
-- 2 integration tests passed: FastAPI + Qdrant local + deterministic embedding stub, bao gồm retry/rebuild và failure recovery.
-- `bun run build` thành công (Astro 5.18.2).
-- Chưa chạy Docker Compose/PDF thực tế: môi trường setup không có Docker và chưa cấu hình embedding model.
+1. **Phase 1 — Foundation + Document Core (đã hoàn tất):** contracts → ingestion/raw → parsers → normalization → chunking → artifacts → embeddings/Qdrant → API/web.
+2. **Phase 2 — Memory Foundation (đã hoàn tất):** interaction schema/raw traces → `MemoryStrategy` → `VectorMemory`/`GraphMemory` (`FileGraphStore` + optional `Neo4jGraphStore`) → `MemoryService` → MCP adapter (`memory_store/search/get/delete` qua stdio & HTTP).
+3. **Phase 3 — Advanced Memory (đã hoàn tất):** non-generative enrichment extractor → Okapi BM25 sparse retrieval + RRF evidence fusion → `TemporalHierarchy` (`year → month → day → session`) → `ZeroTokenMemory` và `HybridMemory` (tự động hạ cấp mượt khi không có embedding server).
+4. **Phase 4 — Experimentation (đã hoàn tất):** stage cache & invalidation API → search filters (`document_id`/`version`/`pipeline_run_id`) → dataset/config snapshots → `Recall@K`/`MRR`/`nDCG@K` → Comparison UI.
 
 Chi tiết hợp đồng và ranh giới xử lý dữ liệu: [documents modules](src/memory_lab/documents/README.md).
 
