@@ -49,17 +49,27 @@ class MemoryRecordStore:
         self.store.put(self._key(record.id), record.model_dump())
         return record
 
-    def get(self, memory_id: str, *, include_deleted: bool = False) -> MemoryRecord:
+    def get(
+        self,
+        memory_id: str,
+        *,
+        include_deleted: bool = False,
+        include_archived: bool = False,
+    ) -> MemoryRecord:
         record = MemoryRecord.model_validate(self.store.get(self._key(memory_id)))
         if record.deleted and not include_deleted:
             raise FileNotFoundError(f"Memory not found: {memory_id}")
+        if record.archived and not include_archived:
+            raise FileNotFoundError(f"Memory archived: {memory_id}")
         return record
 
     def list(
         self,
         *,
         include_deleted: bool = False,
+        include_archived: bool = False,
         session_id: str | None = None,
+        project: str | None = None,
         temporal_bucket: str | None = None,
     ) -> list[MemoryRecord]:
         records: list[MemoryRecord] = []
@@ -67,13 +77,44 @@ class MemoryRecordStore:
             record = MemoryRecord.model_validate(self.store.get(str(path.relative_to(self.store.root))))
             if record.deleted and not include_deleted:
                 continue
+            if record.archived and not include_archived:
+                continue
             if session_id and record.session_id != session_id:
+                continue
+            if project and record.project != project:
                 continue
             if temporal_bucket and not record_matches_bucket(record, temporal_bucket):
                 continue
             records.append(record)
         records.sort(key=lambda item: (item.timestamp, item.id), reverse=True)
         return records
+
+    def bump_access(self, memory_id: str, *, cooldown_secs: int = 60) -> MemoryRecord | None:
+        """Throttled access-weighted reinforcement (ai-memory M8): never rewrites search indexes."""
+        from datetime import datetime, timezone
+        from memory_lab.core.models import utc_now_iso
+
+        key = self._key(memory_id)
+        if not self.store.path(key).exists():
+            return None
+        with self.store.lock(f"mem_access_{memory_id}"):
+            record = MemoryRecord.model_validate(self.store.get(key))
+            if record.deleted or record.archived:
+                return None
+            now = datetime.now(timezone.utc)
+            if record.last_accessed_at and cooldown_secs > 0:
+                try:
+                    prev = datetime.fromisoformat(record.last_accessed_at.replace("Z", "+00:00"))
+                    if prev.tzinfo is None:
+                        prev = prev.replace(tzinfo=timezone.utc)
+                    if (now - prev).total_seconds() < cooldown_secs:
+                        return record
+                except ValueError:
+                    pass
+            record.access_count += 1
+            record.last_accessed_at = utc_now_iso()
+            self.save(record)
+            return record
 
     def mark_deleted(self, memory_id: str) -> bool:
         key = self._key(memory_id)
@@ -114,6 +155,12 @@ class _BaseMemoryStrategy:
         metadata: dict[str, Any] | None = None,
     ) -> MemoryRecord:
         record_id = str(uuid4())
+        merged_meta = {**trace.metadata, **dict(metadata or {})}
+        project = str(merged_meta.pop("_project", None) or "default")
+        tier = str(merged_meta.pop("_tier", None) or "episodic")
+        pinned = bool(merged_meta.pop("_pinned", False))
+        expires_at = merged_meta.pop("_expires_at", None)
+
         entities, relations, temporal, keywords = self.extractor.extract_text(
             trace.content, evidence_id=record_id, reference_timestamp=trace.timestamp
         )
@@ -121,6 +168,10 @@ class _BaseMemoryStrategy:
             id=record_id,
             strategy=self.name,
             namespace=self.namespace,
+            project=project,
+            tier=tier,  # type: ignore[arg-type]
+            pinned=pinned,
+            expires_at=expires_at,
             content=trace.content,
             summary=_build_summary(trace.content),
             trace_ids=[trace.id],
@@ -134,7 +185,7 @@ class _BaseMemoryStrategy:
             hierarchy_level="raw",
             tags=list(tags or []),
             source_refs=list(trace.source_refs),
-            metadata={**trace.metadata, **dict(metadata or {})},
+            metadata=merged_meta,
         )
         self.records.save(record)
         self.graph.upsert_record(record)

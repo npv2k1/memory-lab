@@ -106,15 +106,20 @@ uv run --no-sync pytest
 - `PUT /settings/embedding` lưu & hot-swap provider/base_url/model/api_key theo từng tenant ngay tại runtime (không cần restart).
 - `POST /settings/embedding/test` kiểm tra kết nối endpoint embedding, trả về `dimension` và `latency_ms`.
 
-### Agent Memory & MCP (Phase 2, 3)
+### Agent Memory, Aging, Handoffs, Agent Inbox, Durable Wiki & MCP (Phase 2, 3 + `ai-memory`)
 
-- `POST /memory/store` lưu raw trace và index memory record.
-- `POST /memory/search` & `GET /memory/search?q=...&strategy=hybrid|zero_token|graph|vector&limit=5&session_id=...&temporal_bucket=...`.
-- `GET /memory/records`, `GET /memory/records/{id}`, `DELETE /memory/records/{id}`.
-- `GET /memory/traces` danh sách raw interaction traces bất biến.
-- `GET /memory/temporal` phân cấp thời gian `year → month → day → session`.
-- `GET /memory/graph?entity=...` snapshot đồ thị thực thể/quan hệ.
-- `POST /mcp` JSON-RPC 2.0 MCP endpoint (`initialize` với protocol negotiation `2024-11-05`/`2025-03-26`/`2025-06-18`, `tools/list`, `tools/call` với `memory_store`, `memory_search`, `memory_get`, `memory_delete`).
+- `POST /memory/store` lưu raw trace (tự động scrub secrets), hỗ trợ `project`, `tier` (`working|episodic|semantic|procedural`), `pinned`, `expires_at` TTL.
+- `POST /memory/search` & `GET /memory/search?q=...&strategy=hybrid|zero_token|graph|vector&project=...&session_id=...&temporal_bucket=...` (tự động tăng `access_count` reinforcement).
+- `GET /memory/records`, `GET /memory/records/{id}`, `DELETE /memory/records/{id}`, `POST /memory/records/{id}/restore`.
+- `POST /memory/records/{id}/feedback` (`helpful`, `not_helpful`, `stale`, `wrong`) điều chỉnh độ ưu tiên `salience`.
+- `POST /memory/forget-sweep` chạy quét suy giảm trí nhớ zero-LLM (`dry_run=true|false`, lưu trữ có thể khôi phục, miễn trừ `pinned`/`semantic`/`procedural`).
+- `GET /memory/lint` kiểm tra vệ sinh bộ nhớ zero-LLM: phát hiện bản sao gần trùng, mâu thuẫn đồ thị SPO và bản ghi cũ/stale.
+- `GET /memory/briefing?project=...` tạo gói ngữ cảnh khởi động agent (durable wiki, pinned memories, pending handoffs, unread mail, lint alerts).
+- **Cross-Agent Handoffs (Claim-Once)**: `POST /memory/handoffs`, `GET /memory/handoffs`, `POST /memory/handoffs/accept`, `POST /memory/handoffs/{id}/cancel`.
+- **Directed Agent Inbox (Claim-Once + Epistemic Provenance)**: `POST /memory/messages`, `GET /memory/messages`, `POST /memory/messages/pop`, `POST /memory/messages/cancel`.
+- **Durable Markdown Wiki (YAML frontmatter + `[[wikilinks]]` + Versioning)**: `PUT /memory/pages`, `PATCH /memory/pages`, `GET /memory/pages`, `GET /memory/pages/read`, `DELETE /memory/pages`, `POST /memory/pages/restore`.
+- `GET /memory/traces`, `GET /memory/temporal`, `GET /memory/graph?entity=...`.
+- `POST /mcp` JSON-RPC 2.0 MCP endpoint (`initialize` với protocol negotiation `2024-11-05`/`2025-03-26`/`2025-06-18`, **23 MCP tools**: `memory_store/search/get/delete`, `memory_briefing`, `memory_feedback`, `memory_forget_sweep`, `memory_restore`, `memory_lint`, `memory_handoff_*`, `memory_message_*`, `memory_*_page`).
 
 ### Knowledge Visualization & Unified Search (Bảng, Đồ thị & Tìm kiếm)
 

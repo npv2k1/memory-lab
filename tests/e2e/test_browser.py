@@ -175,3 +175,53 @@ def test_embedding_settings_background_progress_and_delete(page):
     expect(page.locator("#documents article").filter(has_text=filename)).to_have_count(0)
 
 
+def test_agent_hub_handoffs_inbox_and_wiki(page):
+    from playwright.sync_api import expect
+    marker = uuid4().hex[:8]
+    page.goto(os.getenv("E2E_BASE_URL", "http://localhost:4321"))
+    expect(page.locator("#status")).to_have_text("Hoàn tất.")
+
+    # Open Agent Hub & Wiki tab
+    page.locator("button.tab[data-tab='agents']").click()
+    expect(page.locator("#tab-agents")).to_be_visible()
+
+    # 1. Create a cross-agent handoff and accept (claim-once) it
+    page.locator("#hf-summary").fill(f"Handoff summary for {marker}")
+    page.locator("#handoff-form button[type='submit']").click()
+    expect(page.locator("#status")).to_have_text("Hoàn tất.")
+    hf_card = page.locator("#handoff-list article").filter(has_text=f"Handoff summary for {marker}")
+    expect(hf_card).to_be_visible()
+    hf_card.get_by_role("button", name="Accept (Claim)", exact=True).click()
+    expect(hf_card).to_contain_text("accepted")
+
+    # 2. Send a directed message and pop it
+    page.locator("#msg-subject").fill(f"Task-{marker}")
+    page.locator("#msg-body").fill(f"Please inspect endpoint for {marker}")
+    page.locator("#msg-form button[type='submit']").click()
+    expect(page.locator("#msg-inbox-list")).to_contain_text(f"Task-{marker}")
+    page.locator("#btn-msg-pop").click()
+    expect(page.locator("#status")).to_have_text("Hoàn tất.")
+
+    # 3. Create, read, soft-delete, and restore a Markdown wiki page
+    wiki_path = f"decisions/e2e-{marker}.md"
+    page.locator("#wiki-path").fill(wiki_path)
+    page.locator("#wiki-title").fill(f"Decision {marker}")
+    page.locator("#wiki-content").fill(f"Use Memory Lab + ai-memory integration for {marker}.")
+    page.locator("#wiki-form button[type='submit']").click()
+    expect(page.locator("#wiki-pages-list")).to_contain_text(wiki_path)
+
+    pg_card = page.locator("#wiki-pages-list article").filter(has_text=wiki_path)
+    pg_card.get_by_role("button", name="Read", exact=True).click()
+    expect(page.locator("#wiki-viewer")).to_contain_text(f"Decision {marker}")
+
+    pg_card.get_by_role("button", name="Delete", exact=True).click()
+    expect(pg_card).to_contain_text("deleted")
+    pg_card.get_by_role("button", name="Restore", exact=True).click()
+    expect(pg_card).to_contain_text("v2")
+
+    # 4. Generate startup briefing
+    page.locator("#btn-hub-briefing").click()
+    expect(page.locator("#hub-briefing-md")).to_contain_text("Agent Memory Briefing")
+    expect(page.locator("#hub-briefing-md")).to_contain_text(wiki_path)
+
+

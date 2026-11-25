@@ -160,7 +160,7 @@ def test_mcp_jsonrpc_lifecycle(tmp_path):
 
         tools = api.post("/mcp", json={"jsonrpc": "2.0", "id": 2, "method": "tools/list"}).json()
         tool_names = {t["name"] for t in tools["result"]["tools"]}
-        assert tool_names == {"memory_store", "memory_search", "memory_get", "memory_delete"}
+        assert {"memory_store", "memory_search", "memory_get", "memory_delete"}.issubset(tool_names)
 
         stored = api.post(
             "/mcp",
