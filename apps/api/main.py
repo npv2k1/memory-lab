@@ -3,7 +3,6 @@ from uuid import UUID
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
-from qdrant_client import QdrantClient
 from memory_lab.core.config import Settings
 from memory_lab.core.models import (
     BenchmarkDatasetCreate,
@@ -23,7 +22,7 @@ from memory_lab.memory.service import MemoryService
 from memory_lab.retrieval.embedding import OpenAIEmbeddings
 from memory_lab.storage.filesystem.store import FileStore
 from memory_lab.storage.graph.store import FileGraphStore, Neo4jGraphStore
-from memory_lab.storage.qdrant.index import QdrantIndex
+from memory_lab.storage.qdrant.index import QdrantIndex, create_qdrant_client
 
 
 def create_app(
@@ -36,7 +35,7 @@ def create_app(
     store = pipeline.store if pipeline else FileStore(settings.data_dir)
     if pipeline is None:
         embedding = OpenAIEmbeddings(settings.embedding_base_url, settings.embedding_api_key, settings.embedding_model)
-        index = QdrantIndex(QdrantClient(url=settings.qdrant_url), settings.qdrant_collection)
+        index = QdrantIndex(create_qdrant_client(settings.qdrant_url), settings.qdrant_collection)
         pipeline = DocumentPipeline(store, embedding, index, f"{settings.embedding_base_url}:{settings.embedding_model}")
 
     if memory is None:

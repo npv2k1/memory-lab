@@ -118,6 +118,7 @@ uv run --no-sync pytest
 4. **Phase 4 — Experimentation (đã hoàn tất):** stage cache & invalidation API → search filters (`document_id`/`version`/`pipeline_run_id`) → dataset/config snapshots → `Recall@K`/`MRR`/`nDCG@K` → Comparison UI.
 
 Chi tiết hợp đồng và ranh giới xử lý dữ liệu: [documents modules](src/memory_lab/documents/README.md).
+Hướng dẫn tích hợp vào LLM & AI Agent (MCP, REST API, Tool Calling, Python SDK): [LLM integration guide](docs/llm-integration.md).
 
 ## Benchmark trên Google Colab
 
