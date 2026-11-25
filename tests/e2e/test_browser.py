@@ -135,3 +135,43 @@ def test_knowledge_explorer_graph_table_and_search(page):
     expect(page.locator("#kb-table-container table")).to_contain_text("uses")
 
 
+def test_embedding_settings_background_progress_and_delete(page):
+    from playwright.sync_api import expect
+    marker = uuid4().hex[:8]
+    filename = f"bg-del-{marker}.txt"
+    page.goto(os.getenv("E2E_BASE_URL", "http://localhost:4321"))
+    expect(page.locator("#status")).to_have_text("Hoàn tất.")
+
+    # 1. Open Embedding Settings tab, verify presets + Test Connection + Save & Apply
+    page.locator("button.tab[data-tab='settings']").click()
+    expect(page.locator("#tab-settings")).to_be_visible()
+    expect(page.locator("#emb-presets")).to_contain_text("bge-m3")
+    page.locator("#btn-emb-test").click()
+    expect(page.locator("#emb-test-result")).to_contain_text("Kết nối thành công")
+    page.locator("#btn-emb-save").click()
+    expect(page.locator("#emb-test-result")).to_contain_text("Đã lưu & áp dụng")
+    expect(page.locator("#emb-active-source")).to_have_text("runtime saved")
+
+    # 2. Switch back to Documents tab, upload, run Process (Background) and watch 5-stage progress complete
+    page.locator("button.tab[data-tab='documents']").click()
+    page.locator("#file").set_input_files(
+        {
+            "name": filename,
+            "mimeType": "text/plain",
+            "buffer": f"Background processing and deletion test for {marker}.".encode(),
+        }
+    )
+    page.locator("#upload button[type='submit']").click()
+    doc = page.locator("#documents article").filter(has_text=filename)
+    expect(doc).to_be_visible()
+    page.locator("#parser").select_option("text")
+    doc.get_by_role("button", name="Process (Background)", exact=True).click()
+    expect(page.locator("#pipeline-progress")).to_contain_text("completed (100%)")
+    expect(page.locator("#status")).to_have_text("Hoàn tất.")
+
+    # 3. Delete the document from UI and confirm removal
+    doc.get_by_role("button", name="Delete", exact=True).click()
+    expect(page.locator("#status")).to_have_text("Hoàn tất.")
+    expect(page.locator("#documents article").filter(has_text=filename)).to_have_count(0)
+
+

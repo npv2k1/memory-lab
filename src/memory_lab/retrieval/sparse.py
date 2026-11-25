@@ -111,3 +111,22 @@ class BM25Index:
                 )
             )
         return results
+
+    def delete_by_filter(self, filters: dict[str, str], namespace: str) -> int:
+        active = {k: v for k, v in filters.items() if v}
+        if not active:
+            return 0
+        with self.store.lock(f"bm25_{namespace}"):
+            entries = self._load(namespace)
+            if not entries:
+                return 0
+            kept: dict[str, dict] = {}
+            removed = 0
+            for chunk_id, payload in entries.items():
+                if all(payload.get(field) == value for field, value in active.items()):
+                    removed += 1
+                else:
+                    kept[chunk_id] = payload
+            if removed > 0:
+                self.store.put(self._key(namespace), kept)
+            return removed

@@ -69,6 +69,18 @@ class MemoryService:
             "hybrid": self.hybrid,
         }
 
+    def configure_embedding(self, embedding: EmbeddingProvider, embedding_identity: str) -> None:
+        """Hot-swap the active embedding provider and memory vector namespace at runtime."""
+        from memory_lab.storage.filesystem.store import digest
+
+        new_ns = f"mem_{digest(embedding_identity.encode())[:16]}"
+        self.vector.embedding = embedding
+        self.vector.memory_namespace = new_ns
+        self.vector.namespace = new_ns
+        self.graph_strategy.namespace = new_ns
+        self.zero_token.namespace = new_ns
+        self.hybrid.namespace = new_ns
+
     def _resolve_strategy(self, strategy: str | None) -> MemoryStrategy:
         name = strategy or self.default_strategy
         if name not in self.strategies:

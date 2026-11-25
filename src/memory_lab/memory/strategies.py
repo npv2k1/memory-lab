@@ -277,6 +277,30 @@ class VectorMemory(_BaseMemoryStrategy):
         return deleted
 
 
+_PREDICATE_HINTS: list[tuple[tuple[str, ...], tuple[str, ...]]] = [
+    (("manager", "boss", "report", "reports", "lead", "leader", "director", "quản lý", "quan ly", "sếp", "sep", "báo cáo", "bao cao", "trưởng nhóm", "truong nhom"), ("reports_to", "manages")),
+    (("project", "initiative", "dự án", "du an"), ("manages", "works_on")),
+    (("work", "works", "company", "employer", "làm việc", "lam viec", "công ty", "cong ty"), ("works_at", "works_on")),
+    (("deploy", "deployed", "host", "hosted", "server", "triển khai", "trien khai", "chạy trên", "chay tren"), ("deployed_on",)),
+    (("prefer", "prefers", "like", "likes", "favorite", "thích", "thich", "ưa thích"), ("prefers",)),
+    (("use", "uses", "using", "tool", "stack", "sử dụng", "su dung", "dùng", "dung"), ("uses", "depends_on")),
+    (("connect", "integrate", "kết nối", "ket noi"), ("integrates_with",)),
+    (("store", "stores", "save", "lưu", "luu"), ("stores",)),
+    (("create", "created", "build", "built", "author", "tạo", "xây dựng"), ("created",)),
+]
+
+
+def _infer_predicate_hints(query: str) -> list[str]:
+    lower = query.lower()
+    predicates: list[str] = []
+    for cues, preds in _PREDICATE_HINTS:
+        if any(cue in lower for cue in cues):
+            for p in preds:
+                if p not in predicates:
+                    predicates.append(p)
+    return predicates
+
+
 class GraphMemory(_BaseMemoryStrategy):
     """Entity and relation graph memory with 1-hop and 2-hop neighborhood retrieval."""
 
@@ -300,9 +324,17 @@ class GraphMemory(_BaseMemoryStrategy):
         temporal_bucket: str | None = None,
     ) -> list[tuple[MemoryRecord, float]]:
         entities = [e.normalized_name for e in self.extractor.extract_entities(query)]
-        keywords = self.extractor.extract_keywords(query, limit=8)
-        query_terms = list(dict.fromkeys([*entities, *keywords]))
-        raw_hits = self.graph.query_by_entities(query_terms, limit=max(limit * 4, 20))
+        keywords = self.extractor.extract_keywords(query, limit=10)
+        tokens = [tok for tok in tokenize(query, include_folded=True) if len(tok) >= 3]
+        query_terms = list(dict.fromkeys([*entities, *keywords, *tokens]))
+        predicates = _infer_predicate_hints(query)
+
+        try:
+            raw_hits = self.graph.query_by_entities(
+                query_terms, limit=max(limit * 4, 20), predicates=predicates  # type: ignore[call-arg]
+            )
+        except TypeError:
+            raw_hits = self.graph.query_by_entities(query_terms, limit=max(limit * 4, 20))
 
         results: list[tuple[MemoryRecord, float]] = []
         for record_id, score in raw_hits:
@@ -317,6 +349,32 @@ class GraphMemory(_BaseMemoryStrategy):
             results.append((record, round(float(score), 6)))
             if len(results) >= limit:
                 break
+
+        # Fallback: when graph nodes have zero direct entity matches (e.g. lowercase/natural-language query),
+        # rank records via BM25 over entity/relation/keyword/content representations so graph search stays resilient.
+        if not results:
+            candidates = self.records.list(session_id=session_id, temporal_bucket=temporal_bucket)
+            if candidates:
+                scorer = BM25Scorer()
+                docs = [
+                    (
+                        r.id,
+                        " ".join(
+                            [
+                                *(e.name for e in r.entities),
+                                *(f"{rel.subject} {rel.predicate} {rel.object}" for rel in r.relations),
+                                *r.keywords,
+                                r.content,
+                            ]
+                        ),
+                    )
+                    for r in candidates
+                ]
+                by_id = {r.id: r for r in candidates}
+                for rid, score in scorer.score(query, docs, limit=limit):
+                    rec = by_id.get(rid)
+                    if rec is not None:
+                        results.append((rec, round(float(score) * 0.25, 6)))
         return results
 
     def search(

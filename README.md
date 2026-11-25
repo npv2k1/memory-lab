@@ -6,6 +6,8 @@ Nền tảng R&D xử lý tài liệu, trực quan hóa kho tri thức (Embeddin
 
 ## Chạy Production ngay lập tức (Docker Compose + GHCR)
 
+> **Yêu cầu:** Docker Compose **v2.24+** (hỗ trợ cú pháp `env_file` có `required: false`). Các giới hạn RAM mặc định trong `docker-compose.prod.yml`: `API_MEM_LIMIT=4g`, `QDRANT_MEM_LIMIT=2g`, `WEB_MEM_LIMIT=256m`, `NEO4J_MEM_LIMIT=2g`.
+
 Không cần build code — kéo thẳng image public từ GitHub Container Registry và chạy:
 
 ```bash
@@ -23,10 +25,11 @@ docker compose -f docker-compose.prod.yml up -d --wait
 ```
 
 Mở giao diện SaaS tại **http://localhost:4321** · API docs tại `/api/docs`.
+Bạn có thể đổi **Embedding Provider** trực tiếp trong giao diện (**Tab Embedding Settings** — hỗ trợ preset 1-click cho Ollama `bge-m3` khuyên dùng cho tiếng Việt/Anh, `multilingual-e5-large`, `nomic-embed-text`, OpenAI, LM Studio hoặc custom endpoint) mà **không cần restart container**.
 
 ## Khởi chạy Local Build / Development
 
-Yêu cầu Docker Compose, hoặc Python 3.12+ (`uv`) và Bun `1.4.4`. Embedding endpoint phải hỗ trợ OpenAI `/v1/embeddings` (các chiến lược `sparse`, `zero_token` và `graph` chạy được không cần embedding server).
+Yêu cầu Docker Compose (`>= 2.24` cho bản prod), hoặc Python 3.12+ (`uv`) và Bun `1.4.4`. Embedding endpoint phải hỗ trợ OpenAI `/v1/embeddings` (các chiến lược `sparse`, `zero_token` và `graph` chạy được không cần embedding server).
 
 ```bash
 cp .env.example .env
@@ -68,17 +71,21 @@ uv run --no-sync pytest
 
 1. **Tab 1 — Documents & Pipeline**:
    - Upload PDF/DOCX/TXT/Markdown/HTML (có thể truyền `document_id` UUID để nhóm version).
-   - Chọn parser (`docling`/`text`), chunker (`fixed`/`hybrid`), `chunk_size`, `overlap`, bật/tắt `enrichment`, bấm `Process`.
-   - Xem `manifest`, `normalized`, `chunks`, `enriched` và xóa cache từng stage qua `Invalidate`.
-   - Tìm kiếm ở chế độ `dense`, `sparse` (BM25) hoặc `hybrid` (RRF), lọc theo `document_id` / `pipeline_run_id`, xem `score_breakdown` và tải nguồn gốc.
-2. **Tab 2 — Memory Playground**:
+   - Chọn parser (`docling`/`text`), chunker (`fixed`/`hybrid`), `chunk_size`, `overlap`, bật/tắt `enrichment`, bấm `Process` (đồng bộ) hoặc `Process (Background)` để xem thanh tiến độ 5 bước theo thời gian thực.
+   - Xem `manifest`, `normalized`, `chunks`, `enriched`, xóa cache từng stage qua `Invalidate`, hoặc xóa tài liệu/run sạch cả Qdrant & BM25 bằng `Delete` / `Delete Run`.
+   - Tìm kiếm ở chế độ `dense`, `sparse` (BM25) hoặc `hybrid` (RRF) tự động chống trùng giữa nhiều run, lọc theo `document_id` / `pipeline_run_id`, xem `score_breakdown` và tải nguồn gốc.
+2. **Tab 2 — Knowledge Explorer**:
+   - Tìm kiếm hợp nhất (Human Search), bản đồ 2D **Embedding Atlas** (KDE contours, auto-clusters, brush & cross-filtering), **Đồ thị tri thức** tương tác và **Bảng dữ liệu**.
+3. **Tab 3 — Memory Playground**:
    - Lưu interaction trace theo các chiến lược `hybrid`, `zero_token`, `graph`, `vector`.
    - Tìm kiếm memory theo strategy, `session_id`, `temporal_bucket` (`YYYY`, `YYYY-MM`, `YYYY-MM-DD`).
    - Xem & xóa records, kiểm tra **Temporal Hierarchy** (`year → month → day → session`) và **Knowledge Graph**.
-3. **Tab 3 — Experimentation & Comparison**:
+4. **Tab 4 — Experimentation & Comparison**:
    - Tạo benchmark dataset (tự động tính `dataset_hash` cố định).
-   - Chạy đánh giá trên `documents` (`dense`/`sparse`/`hybrid`) hoặc `memory` (`zero_token`/`graph`/`vector`/`hybrid`) để đo `Recall@K`, `MRR`, `nDCG@K` và độ trễ.
+   - Chạy đánh giá trên `documents` (`dense`/`sparse`/`hybrid`) hoặc `memory` (`zero_token`/`graph`/`vector`/`hybrid`) để đo `Recall@K`, `MRR`, `nDCG@K` (chuẩn hóa trong `[0, 1]`) và độ trễ.
    - So sánh nhiều báo cáo song song với delta so với baseline.
+5. **Tab 5 — Embedding Settings**:
+   - Chọn preset 1-click (Ollama `bge-m3`, `multilingual-e5-large`, `nomic-embed-text`, OpenAI `text-embedding-3-small/large`, LM Studio, Custom), kiểm tra kết nối trực tiếp (`Test Connection` đo chiều vector & độ trễ) và lưu áp dụng ngay không cần restart (`Save & Apply`).
 
 ## API chính
 
@@ -86,11 +93,18 @@ uv run --no-sync pytest
 
 - `POST /documents` multipart `file`; optional `document_id` UUID.
 - `GET /documents` danh sách các document version.
+- `DELETE /documents/{id}?version=...` xóa tài liệu (hoặc 1 version cụ thể), các run liên quan và dọn sạch Qdrant + BM25.
 - `GET /documents/{id}/versions/{version}/source` tải file gốc.
-- `POST /documents/{id}/versions/{version}/process` JSON `{"parser":"docling","chunker":"fixed","chunk_size":1200,"overlap":150,"enrich":true}`.
-- `GET /runs`, `GET /runs/{id}/{manifest|normalized|chunks|enriched}`.
+- `POST /documents/{id}/versions/{version}/process` JSON `{"parser":"docling","chunker":"fixed","chunk_size":1200,"overlap":150,"enrich":true}`; hỗ trợ `?background=true` (trả `202` + chạy nền cập nhật tiến độ) và `?async_mode=true` (đẩy vào worker queue).
+- `GET /runs`, `GET /runs/{id}/{manifest|normalized|chunks|enriched}`, `GET /runs/{id}/events` (SSE tiến độ 5 bước), `DELETE /runs/{id}`.
 - `POST /runs/{id}/invalidate` JSON `{"stages":["parse"|"normalize"|"chunk"|"enrich"|"index"]}`.
-- `GET /search?q=...&limit=5&mode=dense|sparse|hybrid&document_id=...&version=...&pipeline_run_id=...`.
+- `GET /search?q=...&limit=5&mode=dense|sparse|hybrid&dedupe=true&document_id=...&version=...&pipeline_run_id=...`.
+
+### Runtime Embedding Provider Settings
+
+- `GET /settings/embedding` xem cấu hình hiện tại (API key luôn được mask), namespace và danh sách presets.
+- `PUT /settings/embedding` lưu & hot-swap provider/base_url/model/api_key theo từng tenant ngay tại runtime (không cần restart).
+- `POST /settings/embedding/test` kiểm tra kết nối endpoint embedding, trả về `dimension` và `latency_ms`.
 
 ### Agent Memory & MCP (Phase 2, 3)
 
@@ -100,7 +114,7 @@ uv run --no-sync pytest
 - `GET /memory/traces` danh sách raw interaction traces bất biến.
 - `GET /memory/temporal` phân cấp thời gian `year → month → day → session`.
 - `GET /memory/graph?entity=...` snapshot đồ thị thực thể/quan hệ.
-- `POST /mcp` JSON-RPC 2.0 MCP endpoint (`initialize`, `tools/list`, `tools/call` với `memory_store`, `memory_search`, `memory_get`, `memory_delete`).
+- `POST /mcp` JSON-RPC 2.0 MCP endpoint (`initialize` với protocol negotiation `2024-11-05`/`2025-03-26`/`2025-06-18`, `tools/list`, `tools/call` với `memory_store`, `memory_search`, `memory_get`, `memory_delete`).
 
 ### Knowledge Visualization & Unified Search (Bảng, Đồ thị & Tìm kiếm)
 
@@ -110,13 +124,14 @@ uv run --no-sync pytest
 - `GET /knowledge/graph?entity=...&source=all|documents|memory&include_cooccurrence=true` đồ thị tri thức hợp nhất từ cả tài liệu và bộ nhớ agent.
 - `GET /knowledge/search?q=...&scope=all|documents|memory&doc_mode=hybrid&memory_strategy=hybrid` tìm kiếm hợp nhất trả về tài liệu, ký ức, thực thể và quan hệ liên quan.
 
-### Experimentation (Phase 4)
+### Experimentation (Phase 4) & Admin Security
 
 - `GET /experiments/datasets`, `POST /experiments/datasets`, `GET /experiments/datasets/{id}`.
 - `POST /experiments/run` chạy benchmark và lưu `config_snapshot` + `dataset_hash`.
 - `GET /experiments/reports`, `GET /experiments/reports/{id}`.
 - `GET /experiments/compare?ids=id1,id2,...` so sánh metrics và delta theo baseline.
 - `GET /health` kiểm tra liveness của tiến trình API.
+- Các endpoint `/admin/*` luôn bị khóa `403` khi `AUTH_MODE=disabled` (trừ khi truyền đúng `X-Admin-Secret` khớp `ADMIN_BOOTSTRAP_KEY`).
 
 ## Boundaries
 

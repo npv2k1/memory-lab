@@ -18,42 +18,97 @@ from memory_lab.memory.service import MemoryService
 from memory_lab.storage.filesystem.store import FileStore, digest
 
 
-def _is_document_hit_relevant(hit: Evidence, case: BenchmarkCase) -> bool:
-    if case.relevant_chunk_ids and hit.chunk.id in case.relevant_chunk_ids:
-        return True
-    if case.relevant_document_ids and hit.chunk.document_id in case.relevant_document_ids:
-        return True
-    if case.relevant_block_ids and any(bid in case.relevant_block_ids for bid in hit.chunk.block_ids):
-        return True
+def _score_document_hits(hits: list[Evidence], case: BenchmarkCase) -> tuple[list[bool], int, int]:
+    """Match hits against ground-truth targets, crediting each distinct target at most once.
+
+    Returns (flags, unique_targets_matched, total_targets).
+    """
+    if case.relevant_chunk_ids:
+        remaining = set(case.relevant_chunk_ids)
+        total = len(remaining)
+        flags: list[bool] = []
+        for hit in hits:
+            if hit.chunk.id in remaining:
+                remaining.remove(hit.chunk.id)
+                flags.append(True)
+            else:
+                flags.append(False)
+        return flags, total - len(remaining), total
+
+    if case.relevant_block_ids:
+        remaining = set(case.relevant_block_ids)
+        total = len(remaining)
+        flags = []
+        for hit in hits:
+            matched = [bid for bid in hit.chunk.block_ids if bid in remaining]
+            if matched:
+                for bid in matched:
+                    remaining.discard(bid)
+                flags.append(True)
+            else:
+                flags.append(False)
+        return flags, total - len(remaining), total
+
+    if case.relevant_document_ids:
+        remaining = set(case.relevant_document_ids)
+        total = len(remaining)
+        flags = []
+        for hit in hits:
+            if hit.chunk.document_id in remaining:
+                remaining.remove(hit.chunk.document_id)
+                flags.append(True)
+            else:
+                flags.append(False)
+        return flags, total - len(remaining), total
+
     if case.relevant_substrings:
-        lower = hit.chunk.text.lower()
-        if any(sub.lower() in lower for sub in case.relevant_substrings):
-            return True
-    return False
+        remaining = {sub.lower() for sub in case.relevant_substrings if sub}
+        total = len(remaining) or 1
+        flags = []
+        for hit in hits:
+            lower = hit.chunk.text.lower()
+            matched = [sub for sub in remaining if sub in lower]
+            if matched:
+                for sub in matched:
+                    remaining.discard(sub)
+                flags.append(True)
+            else:
+                flags.append(False)
+        return flags, total - len(remaining), total
+
+    return [False] * len(hits), 0, 1
 
 
-def _is_memory_hit_relevant(hit: MemorySearchHit, case: BenchmarkCase) -> bool:
-    if case.relevant_memory_ids and hit.record.id in case.relevant_memory_ids:
-        return True
+def _score_memory_hits(hits: list[MemorySearchHit], case: BenchmarkCase) -> tuple[list[bool], int, int]:
+    """Match memory hits against ground-truth targets, crediting each distinct target at most once."""
+    if case.relevant_memory_ids:
+        remaining = set(case.relevant_memory_ids)
+        total = len(remaining)
+        flags: list[bool] = []
+        for hit in hits:
+            if hit.record.id in remaining:
+                remaining.remove(hit.record.id)
+                flags.append(True)
+            else:
+                flags.append(False)
+        return flags, total - len(remaining), total
+
     if case.relevant_substrings:
-        lower = hit.record.content.lower()
-        if any(sub.lower() in lower for sub in case.relevant_substrings):
-            return True
-    return False
+        remaining = {sub.lower() for sub in case.relevant_substrings if sub}
+        total = len(remaining) or 1
+        flags = []
+        for hit in hits:
+            lower = hit.record.content.lower()
+            matched = [sub for sub in remaining if sub in lower]
+            if matched:
+                for sub in matched:
+                    remaining.discard(sub)
+                flags.append(True)
+            else:
+                flags.append(False)
+        return flags, total - len(remaining), total
 
-
-def _expected_relevant_count(case: BenchmarkCase, target: str) -> int:
-    if target == "documents":
-        counts = [
-            len(case.relevant_chunk_ids),
-            len(case.relevant_document_ids),
-            len(case.relevant_block_ids),
-            len(case.relevant_substrings),
-        ]
-    else:
-        counts = [len(case.relevant_memory_ids), len(case.relevant_substrings)]
-    positive = [c for c in counts if c > 0]
-    return min(positive) if positive else 1
+    return [False] * len(hits), 0, 1
 
 
 class ExperimentService:
@@ -104,7 +159,7 @@ class ExperimentService:
                     mode=request.search_mode,
                 )
                 retrieved_ids = [hit.chunk.id for hit in hits]
-                flags = [_is_document_hit_relevant(hit, case) for hit in hits]
+                flags, matched_targets, total_rel = _score_document_hits(hits, case)
             else:
                 hits = self.memory.search_memory(
                     case.query,
@@ -114,20 +169,23 @@ class ExperimentService:
                     temporal_bucket=request.temporal_bucket,
                 )
                 retrieved_ids = [hit.record.id for hit in hits]
-                flags = [_is_memory_hit_relevant(hit, case) for hit in hits]
+                flags, matched_targets, total_rel = _score_memory_hits(hits, case)
 
             latency_ms = round((time.perf_counter() - started) * 1000.0, 3)
-            total_rel = _expected_relevant_count(case, request.target)
             matched_ranks = [idx for idx, is_rel in enumerate(flags, start=1) if is_rel]
+            recall_val = round(min(1.0, matched_targets / max(total_rel, 1)), 6)
+            # When a single hit covers multiple distinct targets, cap ideal hits to observed/needed hits
+            effective_rel = max(len(matched_ranks), total_rel - max(0, matched_targets - len(matched_ranks)))
+            ndcg_val = ndcg_at_k(flags, effective_rel, request.k)
 
             case_results.append(
                 ExperimentCaseResult(
                     query=case.query,
                     retrieved_ids=retrieved_ids,
                     matched_ranks=matched_ranks,
-                    recall_at_k=recall_at_k(flags, total_rel, request.k),
+                    recall_at_k=recall_val,
                     mrr=mean_reciprocal_rank(flags, request.k),
-                    ndcg_at_k=ndcg_at_k(flags, total_rel, request.k),
+                    ndcg_at_k=ndcg_val,
                     latency_ms=latency_ms,
                 )
             )
