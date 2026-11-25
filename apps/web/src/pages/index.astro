@@ -25,7 +25,7 @@ import '../styles/app.css';
       </div>
       <div>
         <div class="brand-title">Memory Lab</div>
-        <div class="brand-sub">Knowledge Workspace · v0.2</div>
+        <div class="brand-sub">Knowledge Workspace · v0.3</div>
       </div>
     </div>
 
@@ -54,6 +54,12 @@ import '../styles/app.css';
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
           <span>Experiments &amp; Eval</span>
           <span class="nav-count" id="nav-count-exp">0</span>
+        </button>
+
+        <button type="button" class="tab" data-tab="settings" role="tab" aria-selected="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <span>Embedding Settings</span>
+          <span class="nav-count" id="nav-emb-model">env</span>
         </button>
       </nav>
     </div>
@@ -130,7 +136,7 @@ import '../styles/app.css';
             <h2>2. Pipeline inspector &amp; Stage cache</h2>
             <span class="pill">Non-Generative Enrichment</span>
           </div>
-          <p class="hint">Chọn Process trên tài liệu. PDF/DOCX dùng Docling; TXT/Markdown dùng text. Có thể xóa cache từng stage bằng Invalidate.</p>
+          <p class="hint">Chọn Process (đồng bộ) hoặc Process (Background) để theo dõi tiến trình 5 bước theo thời gian thực. PDF/DOCX dùng Docling; TXT/Markdown dùng text.</p>
           <div class="controls">
             <label>Parser <select id="parser"><option value="docling">docling</option><option value="text">text</option></select></label>
             <label>Chunker <select id="chunker"><option value="fixed">fixed</option><option value="hybrid">hybrid</option></select></label>
@@ -138,6 +144,7 @@ import '../styles/app.css';
             <label>Overlap <input id="chunk-overlap" type="number" value="150" min="0" style="width:80px"/></label>
             <label><input id="enrich-toggle" type="checkbox" checked/> Enrichment</label>
           </div>
+          <div id="pipeline-progress" style="display:none"></div>
           <div id="runs"></div>
           <pre id="artifact">Chọn artifact để xem.</pre>
         </section>
@@ -494,6 +501,57 @@ import '../styles/app.css';
           <div id="exp-comparison"></div>
         </section>
       </div>
+
+      <!-- TAB 5: EMBEDDING PROVIDER SETTINGS (Runtime Hot-Swap without Container Restart) -->
+      <div id="tab-settings" class="tab-panel">
+        <section class="card">
+          <div class="card-head">
+            <h2>Cấu hình Embedding Provider (Runtime Hot-Swap)</h2>
+            <span class="pill accent" id="emb-active-source">env</span>
+          </div>
+          <p class="hint">Chuyển đổi model embedding trực tiếp không cần restart container. Khuyên dùng <strong>Ollama · bge-m3</strong> hoặc <strong>OpenAI · text-embedding-3-small</strong> cho tìm kiếm đa ngôn ngữ Việt–Anh.</p>
+
+          <div id="emb-active-summary" class="meta" style="margin-bottom:16px"></div>
+
+          <h3>1. Chọn nhanh Preset</h3>
+          <div id="emb-presets" class="preset-grid"></div>
+
+          <h3>2. Thông số kết nối OpenAI-Compatible</h3>
+          <form id="emb-settings-form" class="stack-form">
+            <div class="form-grid">
+              <label class="field">
+                <span>Provider</span>
+                <select id="emb-provider">
+                  <option value="ollama">ollama</option>
+                  <option value="openai">openai</option>
+                  <option value="lmstudio">lmstudio</option>
+                  <option value="custom">custom</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Base URL (OpenAI-compatible)</span>
+                <input id="emb-base-url" placeholder="http://host.docker.internal:11434/v1" required/>
+              </label>
+              <label class="field">
+                <span>Model</span>
+                <input id="emb-model" placeholder="bge-m3" required/>
+              </label>
+              <label class="field">
+                <span>API Key (tùy chọn — để trống để giữ nguyên)</span>
+                <input id="emb-api-key" type="password" placeholder="Chưa cấu hình (không cần với Ollama local)"/>
+              </label>
+            </div>
+            <div class="controls" style="justify-content:space-between; margin-top:4px">
+              <label><input id="emb-clear-key" type="checkbox"/> Xóa API Key đã lưu</label>
+              <div class="controls">
+                <button type="button" class="secondary" id="btn-emb-test">Test Connection</button>
+                <button type="submit" id="btn-emb-save">Save &amp; Apply</button>
+              </div>
+            </div>
+          </form>
+          <div id="emb-test-result" style="display:none"></div>
+        </section>
+      </div>
     </main>
   </div>
 </div>
@@ -532,6 +590,10 @@ const TAB_META: Record<string, { title: string; subtitle: string }> = {
   experiments: {
     title: 'Experimentation & Benchmark Evaluation',
     subtitle: 'Tạo bộ đề đánh giá có dataset_hash, đo Recall@K, MRR, nDCG@K và so sánh cấu hình song song.',
+  },
+  settings: {
+    title: 'Embedding Provider Settings',
+    subtitle: 'Cấu hình và kiểm tra kết nối Ollama, OpenAI, LM Studio hoặc endpoint OpenAI-compatible trực tiếp tại runtime.',
   },
 };
 
@@ -617,6 +679,8 @@ function switchTab(target: string) {
   }
   if (target === 'knowledge') {
     action(refreshKnowledge);
+  } else if (target === 'settings') {
+    action(refreshEmbeddingSettings);
   }
 }
 
@@ -660,6 +724,88 @@ async function refreshOverview() {
   el('nav-count-exp').textContent = String(ov.reports_count);
 }
 
+// --- Live 5-stage Pipeline Progress Stepper ---
+const PIPELINE_STAGE_LABELS: Record<string, string> = {
+  parse: '1. Parse',
+  normalize: '2. Normalize',
+  chunk: '3. Chunk',
+  enrich: '4. Enrich',
+  index: '5. Index',
+};
+
+function renderPipelineProgress(manifest: any, filename = '') {
+  const box = el('pipeline-progress');
+  box.style.display = 'block';
+  box.className = 'pipeline-progress-box';
+  box.replaceChildren();
+
+  const header = document.createElement('div');
+  header.className = 'card-head';
+  header.style.marginBottom = '4px';
+
+  const title = document.createElement('strong');
+  const pct = Number(manifest.progress ?? (manifest.status === 'completed' ? 100 : 15));
+  const labelPrefix = filename ? `${filename} · ` : '';
+  title.textContent = `${labelPrefix}Run ${String(manifest.pipeline_run_id || '').slice(0, 12)} · ${manifest.status} (${pct}%)`;
+
+  const stageBadge = pill(`stage: ${manifest.current_stage || manifest.status}`, manifest.status === 'failed' ? 'danger' : 'accent');
+  header.append(title, stageBadge);
+
+  const track = document.createElement('div');
+  track.className = 'progress-track';
+  const fill = document.createElement('div');
+  fill.className = `progress-fill${manifest.status === 'failed' ? ' failed' : ''}`;
+  fill.style.width = `${Math.max(4, Math.min(100, pct))}%`;
+  track.append(fill);
+
+  const steps = document.createElement('div');
+  steps.className = 'stage-steps';
+  const stages = manifest.stages || {};
+  for (const [key, label] of Object.entries(PIPELINE_STAGE_LABELS)) {
+    const st = String(stages[key] || 'pending');
+    const chip = document.createElement('span');
+    chip.className = `stage-chip ${st}`;
+    const icon = st === 'completed' ? '✓' : st === 'running' ? '●' : st === 'failed' ? '✕' : '○';
+    chip.textContent = `${icon} ${label}`;
+    steps.append(chip);
+  }
+
+  box.append(header, track, steps);
+  if (manifest.status === 'failed' && manifest.error_message) {
+    const err = document.createElement('p');
+    err.className = 'hint';
+    err.style.color = 'var(--danger-ink)';
+    err.style.margin = '8px 0 0';
+    err.textContent = `Lỗi: ${manifest.error_type || 'Error'} — ${manifest.error_message}`;
+    box.append(err);
+  }
+}
+
+async function pollRunProgress(runId: string, filename: string) {
+  for (let i = 0; i < 180; i++) {
+    const manifest = await request(`/runs/${runId}/manifest`);
+    renderPipelineProgress(manifest, filename);
+    if (manifest.status === 'completed' || manifest.status === 'failed') {
+      await Promise.all([refreshDocuments(), refreshOverview()]);
+      if (manifest.status === 'failed') {
+        throw new Error(manifest.error_message || manifest.error_type || 'Pipeline failed');
+      }
+      return;
+    }
+    await new Promise((r) => setTimeout(r, 350));
+  }
+}
+
+function currentPipelinePayload() {
+  return {
+    parser: select('parser').value,
+    chunker: select('chunker').value,
+    chunk_size: Number(input('chunk-size').value || 1200),
+    overlap: Number(input('chunk-overlap').value || 150),
+    enrich: input('enrich-toggle').checked,
+  };
+}
+
 // --- TAB 1: Documents & Pipeline ---
 async function refreshDocuments() {
   const docs = await request('/documents');
@@ -683,20 +829,29 @@ async function refreshDocuments() {
     controls.className = 'controls';
     controls.append(
       button('Process', async () => {
-        const payload = {
-          parser: select('parser').value,
-          chunker: select('chunker').value,
-          chunk_size: Number(input('chunk-size').value || 1200),
-          overlap: Number(input('chunk-overlap').value || 150),
-          enrich: input('enrich-toggle').checked,
-        };
-        await request(`/documents/${doc.id}/versions/${doc.version}/process`, {
+        const res = await request(`/documents/${doc.id}/versions/${doc.version}/process`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
+          body: JSON.stringify(currentPipelinePayload()),
+        });
+        renderPipelineProgress(res, doc.filename);
+        await Promise.all([refreshDocuments(), refreshOverview()]);
+      }, 'sm'),
+      button('Process (Background)', async () => {
+        const initial = await request(`/documents/${doc.id}/versions/${doc.version}/process?background=true`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(currentPipelinePayload()),
+        });
+        renderPipelineProgress(initial, doc.filename);
+        await pollRunProgress(initial.pipeline_run_id, doc.filename);
+      }, 'secondary sm'),
+      button('Delete', async () => {
+        await request(`/documents/${doc.id}?version=${encodeURIComponent(doc.version)}`, {
+          method: 'DELETE',
         });
         await Promise.all([refreshDocuments(), refreshOverview()]);
-      }, 'sm')
+      }, 'danger sm')
     );
     row.append(title, meta, controls);
     el('documents').append(row);
@@ -710,7 +865,8 @@ async function refreshDocuments() {
     const enrichSummary = run.enrichment_summary
       ? ` · entities:${run.enrichment_summary.entity_count} rels:${run.enrichment_summary.relation_count}`
       : '';
-    title.textContent = `${run.pipeline_run_id.slice(0, 12)} · ${run.status}${enrichSummary}`;
+    const pct = run.progress != null ? ` · ${run.progress}%` : '';
+    title.textContent = `${run.pipeline_run_id.slice(0, 12)} · ${run.status}${pct}${enrichSummary}`;
     row.append(title);
 
     const actions = document.createElement('div');
@@ -745,6 +901,14 @@ async function refreshDocuments() {
             body: JSON.stringify({ stages: [stageSelect.value] }),
           });
           el('artifact').textContent = JSON.stringify(updated, null, 2);
+          await Promise.all([refreshDocuments(), refreshOverview()]);
+        },
+        'danger sm'
+      ),
+      button(
+        'Delete Run',
+        async () => {
+          await request(`/runs/${run.pipeline_run_id}`, { method: 'DELETE' });
           await Promise.all([refreshDocuments(), refreshOverview()]);
         },
         'danger sm'
@@ -1531,8 +1695,133 @@ function renderComparison(comparison: any) {
   wrap.append(tableWrap);
 }
 
+// --- TAB 5: Embedding Provider Settings ---
+function showEmbeddingBanner(message: string, kind: 'ok' | 'err' | 'info' = 'info') {
+  const banner = el('emb-test-result');
+  banner.style.display = 'block';
+  banner.className = kind === 'info' ? 'settings-banner' : `settings-banner ${kind}`;
+  banner.textContent = message;
+}
+
+async function refreshEmbeddingSettings() {
+  const cfg = await request('/settings/embedding');
+  const shortModel = (cfg.model || 'unset').split('/').pop() || 'unset';
+  el('nav-emb-model').textContent = shortModel.slice(0, 12);
+  el('emb-active-source').textContent = cfg.source === 'persisted' ? 'runtime saved' : 'env default';
+
+  const summary = el('emb-active-summary');
+  summary.replaceChildren(
+    pill(`provider: ${cfg.provider}`, 'accent'),
+    pill(`model: ${cfg.model || '(chưa đặt)'}`),
+    pill(`doc_ns: ${cfg.document_namespace}`),
+    pill(`mem_ns: ${cfg.memory_namespace}`),
+    pill(cfg.has_api_key ? `key: ${cfg.api_key_masked}` : 'key: none')
+  );
+
+  select('emb-provider').value = ['ollama', 'openai', 'lmstudio', 'custom'].includes(cfg.provider) ? cfg.provider : 'custom';
+  input('emb-base-url').value = cfg.base_url || '';
+  input('emb-model').value = cfg.model || '';
+  input('emb-api-key').value = '';
+  input('emb-api-key').placeholder = cfg.has_api_key
+    ? `Đã lưu (${cfg.api_key_masked}) — để trống để giữ nguyên`
+    : 'Chưa cấu hình (không cần với Ollama local)';
+  input('emb-clear-key').checked = false;
+
+  const presetsWrap = el('emb-presets');
+  presetsWrap.replaceChildren();
+  for (const preset of cfg.presets || []) {
+    const card = document.createElement('button');
+    card.type = 'button';
+    const isSelected = preset.model && preset.model === cfg.model && preset.base_url === cfg.base_url;
+    card.className = `preset-card${isSelected ? ' selected' : ''}`;
+
+    const title = document.createElement('span');
+    title.className = 'preset-title';
+    title.textContent = preset.label;
+
+    const sub = document.createElement('span');
+    sub.className = 'preset-sub';
+    sub.textContent = preset.model
+      ? `${preset.model}${preset.dimensions ? ` · ${preset.dimensions}d` : ''}`
+      : 'Nhập URL & Model tùy chỉnh';
+
+    const notes = document.createElement('span');
+    notes.className = 'preset-notes';
+    notes.textContent = preset.notes || '';
+
+    card.append(title, sub, notes);
+    card.onclick = () => {
+      document.querySelectorAll('.preset-card').forEach((c) => c.classList.remove('selected'));
+      card.classList.add('selected');
+      select('emb-provider').value = preset.provider || 'custom';
+      if (preset.base_url) input('emb-base-url').value = preset.base_url;
+      if (preset.model) input('emb-model').value = preset.model;
+      showEmbeddingBanner(`Đã chọn preset "${preset.label}". Bấm Test Connection để kiểm tra hoặc Save & Apply để áp dụng ngay.`);
+    };
+    presetsWrap.append(card);
+  }
+}
+
+el('btn-emb-test').onclick = () => {
+  action(async () => {
+    const payload: Record<string, any> = {
+      base_url: input('emb-base-url').value.trim() || null,
+      model: input('emb-model').value.trim() || null,
+    };
+    const keyVal = input('emb-api-key').value.trim();
+    if (keyVal) payload.api_key = keyVal;
+    const res = await request('/settings/embedding/test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) {
+      showEmbeddingBanner(
+        `Kết nối thành công! Model "${res.model}" trả về vector ${res.dimension} chiều trong ${res.latency_ms} ms (${res.base_url}).`,
+        'ok'
+      );
+    } else {
+      showEmbeddingBanner(`Kết nối thất bại (${res.latency_ms} ms): ${res.error}`, 'err');
+      throw new Error(res.error || 'Embedding connection test failed');
+    }
+  });
+};
+
+el('emb-settings-form').onsubmit = (event) => {
+  event.preventDefault();
+  action(async () => {
+    const payload: Record<string, any> = {
+      provider: select('emb-provider').value,
+      base_url: input('emb-base-url').value.trim(),
+      model: input('emb-model').value.trim(),
+      clear_api_key: input('emb-clear-key').checked,
+    };
+    const keyVal = input('emb-api-key').value.trim();
+    if (keyVal) payload.api_key = keyVal;
+    const updated = await request('/settings/embedding', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    await refreshEmbeddingSettings();
+    const nsNote = updated.namespace_changed
+      ? ` Namespace mới: ${updated.document_namespace} (hãy Process lại các tài liệu cần tìm với model mới).`
+      : '';
+    showEmbeddingBanner(
+      `Đã lưu & áp dụng model "${updated.model}" (${updated.provider}) trực tiếp không cần restart!${nsNote}`,
+      'ok'
+    );
+  });
+};
+
 async function refreshAll() {
-  await Promise.all([refreshOverview(), refreshDocuments(), refreshMemory(), refreshExperiments()]);
+  await Promise.all([
+    refreshOverview(),
+    refreshDocuments(),
+    refreshMemory(),
+    refreshExperiments(),
+    refreshEmbeddingSettings(),
+  ]);
 }
 
 // --- Event Bindings ---

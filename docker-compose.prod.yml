@@ -10,6 +10,7 @@ services:
   qdrant:
     image: qdrant/qdrant:v1.14.1
     restart: unless-stopped
+    mem_limit: ${QDRANT_MEM_LIMIT:-2g}
     security_opt: ["no-new-privileges:true"]
     volumes:
       - qdrant:/qdrant/storage
@@ -26,6 +27,7 @@ services:
     image: ${REGISTRY_PREFIX:-ghcr.io/npv2k1/memory-lab}/api:${IMAGE_TAG:-main}
     pull_policy: ${PULL_POLICY:-missing}
     restart: unless-stopped
+    mem_limit: ${API_MEM_LIMIT:-4g}
     security_opt: ["no-new-privileges:true"]
     env_file:
       - path: ${PROD_ENV_FILE:-.env.prod}
@@ -56,6 +58,7 @@ services:
     image: ${REGISTRY_PREFIX:-ghcr.io/npv2k1/memory-lab}/web:${IMAGE_TAG:-main}
     pull_policy: ${PULL_POLICY:-missing}
     restart: unless-stopped
+    mem_limit: ${WEB_MEM_LIMIT:-256m}
     security_opt: ["no-new-privileges:true"]
     ports:
       - "${WEB_BIND:-0.0.0.0}:${WEB_PORT:-4321}:4321"
@@ -75,6 +78,7 @@ services:
     image: neo4j:5.26-community
     profiles: [graph]
     restart: unless-stopped
+    mem_limit: ${NEO4J_MEM_LIMIT:-2g}
     security_opt: ["no-new-privileges:true"]
     environment:
       NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:-memory-lab-local}

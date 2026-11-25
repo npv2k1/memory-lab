@@ -2,7 +2,8 @@ import json
 from typing import Any
 from memory_lab.memory.service import MemoryService
 
-PROTOCOL_VERSION = "2024-11-05"
+SUPPORTED_PROTOCOL_VERSIONS = ("2024-11-05", "2025-03-26", "2025-06-18")
+DEFAULT_PROTOCOL_VERSION = "2025-03-26"
 
 TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
@@ -66,10 +67,15 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
 class MCPServer:
     """JSON-RPC 2.0 Model Context Protocol adapter for MemoryService."""
 
-    def __init__(self, memory: MemoryService, *, server_name: str = "memory-lab", server_version: str = "0.2.0"):
+    def __init__(self, memory: MemoryService, *, server_name: str = "memory-lab", server_version: str = "0.3.0"):
         self.memory = memory
         self.server_name = server_name
         self.server_version = server_version
+
+    def _negotiate_protocol(self, requested: str | None) -> str:
+        if requested and requested in SUPPORTED_PROTOCOL_VERSIONS:
+            return requested
+        return DEFAULT_PROTOCOL_VERSION
 
     def handle_message(self, message: dict[str, Any]) -> dict[str, Any] | None:
         req_id = message.get("id")
@@ -84,10 +90,11 @@ class MCPServer:
         if method == "ping":
             return self._result(req_id, {})
         if method == "initialize":
+            negotiated = self._negotiate_protocol(params.get("protocolVersion"))
             return self._result(
                 req_id,
                 {
-                    "protocolVersion": PROTOCOL_VERSION,
+                    "protocolVersion": negotiated,
                     "capabilities": {"tools": {"listChanged": False}},
                     "serverInfo": {"name": self.server_name, "version": self.server_version},
                 },

@@ -10,7 +10,7 @@ class ChunkingService:
         self.store = store
         self.strategies = strategies if strategies is not None else {
             "fixed": lambda config: FixedChunker(config.chunk_size, config.overlap),
-            "hybrid": lambda config: HybridChunkerAdapter(),
+            "hybrid": lambda config: HybridChunkerAdapter(config.chunk_size, config.overlap),
         }
 
     def chunk(self, document: NormalizedDocument, artifact: dict, config: PipelineConfig, prefix: str, run_id: str) -> list[Chunk]:

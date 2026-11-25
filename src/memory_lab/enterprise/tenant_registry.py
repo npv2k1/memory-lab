@@ -89,6 +89,11 @@ class TenantContextRegistry:
                 graph=graph,
                 default_strategy=self.settings.default_memory_strategy,  # type: ignore[arg-type]
             )
+            from memory_lab.enterprise.embedding_settings import EmbeddingSettingsService
+
+            EmbeddingSettingsService().apply_persisted_if_exists(
+                store, safe_id, self.settings.default_tenant_id, pipeline, memory
+            )
             experiments = ExperimentService(store, pipeline, memory)
             knowledge = KnowledgeService(store, pipeline, memory)
             atlas = EmbeddingAtlasService(store, memory)

@@ -1,9 +1,12 @@
+import asyncio
+import hmac
+import json
 import time
 from typing import Any
 from uuid import UUID, uuid4
-from fastapi import FastAPI, File, HTTPException, Query, Request, UploadFile
+from fastapi import BackgroundTasks, FastAPI, File, HTTPException, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, StreamingResponse
 from pydantic import BaseModel, Field
 from memory_lab.core.config import Settings
 from memory_lab.core.models import (
@@ -19,6 +22,11 @@ from memory_lab.core.models import (
 from memory_lab.documents.ingestion.service import IngestionService
 from memory_lab.documents.pipeline.service import DocumentPipeline
 from memory_lab.enterprise.auth import AuthContext, AuthService, Role
+from memory_lab.enterprise.embedding_settings import (
+    EmbeddingSettingsService,
+    EmbeddingSettingsUpdate,
+    EmbeddingTestRequest,
+)
 from memory_lab.enterprise.jobs import JobQueue
 from memory_lab.enterprise.metrics import MetricsRegistry
 from memory_lab.enterprise.object_store import S3ObjectMirror
@@ -65,6 +73,7 @@ def create_app(
 ) -> FastAPI:
     settings = settings or Settings()
     store = pipeline.store if pipeline else FileStore(settings.data_dir)
+    injected_pipeline = pipeline is not None
     if pipeline is None:
         embedding = OpenAIEmbeddings(settings.embedding_base_url, settings.embedding_api_key, settings.embedding_model)
         index = QdrantIndex(create_qdrant_client(settings.qdrant_url), settings.qdrant_collection)
@@ -90,6 +99,12 @@ def create_app(
             pipeline.embedding_identity,
             graph=graph,
             default_strategy=settings.default_memory_strategy,  # type: ignore[arg-type]
+        )
+
+    embedding_settings_service = EmbeddingSettingsService()
+    if not injected_pipeline:
+        embedding_settings_service.apply_persisted_if_exists(
+            store, settings.default_tenant_id, settings.default_tenant_id, pipeline, memory
         )
 
     experiments = experiments or ExperimentService(store, pipeline, memory)
@@ -128,11 +143,12 @@ def create_app(
     app.state.enterprise_store = ent_store
     app.state.job_queue = job_queue
     app.state.metrics = metrics
+    app.state.embedding_settings = embedding_settings_service
 
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
-        allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         allow_headers=["*"],
     )
 
@@ -176,7 +192,7 @@ def create_app(
             response.headers[hk] = hv
 
         ctx: AuthContext | None = getattr(request.state, "auth_ctx", None)
-        if ctx is not None and request.method in {"POST", "DELETE"} and request.url.path not in {"/auth/token"}:
+        if ctx is not None and request.method in {"POST", "PUT", "DELETE"} and request.url.path not in {"/auth/token"}:
             try:
                 ent_store.record_audit(
                     tenant_id=ctx.tenant_id,
@@ -196,6 +212,19 @@ def create_app(
         auth_service.require_role(ctx, required_role)
         request.state.auth_ctx = ctx
         return ctx, registry.get(ctx.tenant_id)
+
+    def resolve_admin(request: Request) -> tuple[AuthContext, TenantServices]:
+        """Protect /admin/* even when AUTH_MODE=disabled unless a matching X-Admin-Secret is presented."""
+        if settings.auth_mode == "disabled":
+            supplied = request.headers.get("X-Admin-Secret", "").strip()
+            expected = settings.admin_bootstrap_key.strip()
+            if not (expected and supplied and hmac.compare_digest(supplied, expected)):
+                raise HTTPException(
+                    403,
+                    "Admin endpoints are locked when AUTH_MODE=disabled. "
+                    "Enable AUTH_MODE=enterprise or provide a valid X-Admin-Secret.",
+                )
+        return resolve(request, "admin")
 
     @app.exception_handler(FileNotFoundError)
     async def missing(_request, _exc):
@@ -267,12 +296,12 @@ def create_app(
 
     @app.get("/admin/tenants")
     def admin_list_tenants(request: Request):
-        resolve(request, "admin")
+        resolve_admin(request)
         return ent_store.list_tenants()
 
     @app.post("/admin/tenants", status_code=201)
     def admin_create_tenant(request: Request, payload: TenantCreateRequest):
-        resolve(request, "admin")
+        resolve_admin(request)
         return ent_store.ensure_tenant(
             payload.id,
             payload.name,
@@ -284,26 +313,51 @@ def create_app(
 
     @app.get("/admin/api-keys")
     def admin_list_api_keys(request: Request, tenant_id: str | None = Query(None)):
-        ctx, _svc = resolve(request, "admin")
+        ctx, _svc = resolve_admin(request)
         return ent_store.list_api_keys(tenant_id=tenant_id or ctx.tenant_id)
 
     @app.post("/admin/api-keys", status_code=201)
     def admin_create_api_key(request: Request, payload: ApiKeyCreateRequest):
-        ctx, _svc = resolve(request, "admin")
+        ctx, _svc = resolve_admin(request)
         target_tenant = payload.tenant_id or ctx.tenant_id
         return ent_store.create_api_key(target_tenant, payload.name, payload.role)
 
     @app.delete("/admin/api-keys/{key_id}")
     def admin_revoke_api_key(request: Request, key_id: str):
-        resolve(request, "admin")
+        resolve_admin(request)
         if not ent_store.revoke_api_key(key_id):
             raise HTTPException(404, "API key not found")
         return {"id": key_id, "revoked": True}
 
     @app.get("/admin/audit")
     def admin_audit_logs(request: Request, limit: int = Query(100, ge=1, le=500)):
-        ctx, _svc = resolve(request, "admin")
+        ctx, _svc = resolve_admin(request)
         return ent_store.list_audit_logs(tenant_id=ctx.tenant_id, limit=limit)
+
+    # --- Runtime Embedding Provider Settings ---
+
+    @app.get("/settings/embedding")
+    def get_embedding_settings(request: Request):
+        _ctx, svc = resolve(request, "viewer")
+        return embedding_settings_service.get_public(svc.store, settings, svc.pipeline, svc.memory)
+
+    @app.put("/settings/embedding")
+    def update_embedding_settings(request: Request, payload: EmbeddingSettingsUpdate):
+        ctx, svc = resolve(request, "editor")
+        return embedding_settings_service.update(
+            svc.store,
+            ctx.tenant_id,
+            settings.default_tenant_id,
+            payload,
+            svc.pipeline,
+            svc.memory,
+            settings,
+        )
+
+    @app.post("/settings/embedding/test")
+    def test_embedding_settings(request: Request, payload: EmbeddingTestRequest):
+        _ctx, svc = resolve(request, "editor")
+        return embedding_settings_service.test_connection(svc.store, payload, svc.pipeline, settings)
 
     # --- Async Job Queue APIs ---
 
@@ -359,11 +413,23 @@ def create_app(
             )
         return doc
 
+    @app.delete("/documents/{identity}")
+    def delete_document(request: Request, identity: str, version: str | None = Query(None)):
+        _ctx, svc = resolve(request, "editor")
+        return svc.pipeline.delete_document(identity, version=version)
+
     @app.get("/documents/{identity}/versions/{version}/source")
     def source(request: Request, identity: str, version: str):
         _ctx, svc = resolve(request, "viewer")
         doc = svc.store.document(identity, version)
         return FileResponse(svc.store.raw_path(doc), filename=doc.filename, media_type="application/octet-stream")
+
+    def _run_background_process(pipeline_svc: DocumentPipeline, identity: str, version: str, config: PipelineConfig):
+        try:
+            pipeline_svc.process(identity, version, config)
+        except Exception:
+            # Failure status and error details are already persisted to manifest.json by process()
+            pass
 
     @app.post("/documents/{identity}/versions/{version}/process")
     def process(
@@ -371,7 +437,9 @@ def create_app(
         identity: str,
         version: str,
         config: PipelineConfig,
+        background_tasks: BackgroundTasks,
         async_mode: bool = Query(False),
+        background: bool = Query(False),
     ):
         ctx, svc = resolve(request, "editor")
         if async_mode:
@@ -383,12 +451,55 @@ def create_app(
                 config=config,
             )
             return JSONResponse(status_code=202, content=job)
+        if background:
+            initial_manifest = svc.pipeline.prepare_run(identity, version, config)
+            background_tasks.add_task(_run_background_process, svc.pipeline, identity, version, config)
+            return JSONResponse(status_code=202, content=initial_manifest)
         return svc.pipeline.process(identity, version, config)
 
     @app.get("/runs")
     def runs(request: Request):
         _ctx, svc = resolve(request, "viewer")
         return [svc.store.get(str(path.relative_to(svc.store.root))) for path in sorted(svc.store.root.glob("runs/*/manifest.json"))]
+
+    @app.delete("/runs/{run_id}")
+    def delete_run(request: Request, run_id: str):
+        _ctx, svc = resolve(request, "editor")
+        return svc.pipeline.delete_run(run_id)
+
+    @app.get("/runs/{run_id}/events")
+    async def run_events(request: Request, run_id: str):
+        """Server-Sent Events stream reporting real-time pipeline stage progress until completion."""
+        _ctx, svc = resolve(request, "viewer")
+        manifest_path = svc.store.path(f"runs/{run_id}/manifest.json")
+        if not manifest_path.exists():
+            raise HTTPException(404, "Pipeline run not found")
+
+        async def event_stream():
+            last_sent = ""
+            for _ in range(300):
+                if await request.is_disconnected():
+                    break
+                if not manifest_path.exists():
+                    break
+                try:
+                    data = svc.store.get(f"runs/{run_id}/manifest.json")
+                except Exception:
+                    await asyncio.sleep(0.25)
+                    continue
+                payload = json.dumps(data, ensure_ascii=False)
+                if payload != last_sent:
+                    last_sent = payload
+                    yield f"data: {payload}\n\n"
+                if data.get("status") in {"completed", "failed", "invalidated"}:
+                    break
+                await asyncio.sleep(0.35)
+
+        return StreamingResponse(
+            event_stream(),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
 
     @app.get("/runs/{run_id}/{artifact}")
     def artifacts(request: Request, run_id: str, artifact: str):
@@ -411,6 +522,7 @@ def create_app(
         document_id: str | None = Query(None),
         version: str | None = Query(None),
         pipeline_run_id: str | None = Query(None),
+        dedupe: bool = Query(True),
     ):
         _ctx, svc = resolve(request, "viewer")
         return svc.pipeline.search(
@@ -420,6 +532,7 @@ def create_app(
             version=version,
             pipeline_run_id=pipeline_run_id,
             mode=mode,
+            dedupe=dedupe,
         )
 
     # --- Phase 2 & 3: Agent Memory Foundation, Graph, Temporal Hierarchy & Advanced Strategies ---

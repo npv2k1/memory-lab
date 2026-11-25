@@ -2,7 +2,7 @@ from collections import Counter, defaultdict
 from typing import Any
 import httpx
 from memory_lab.core.models import MemoryRecord
-from memory_lab.documents.enrichment.extractor import normalize_name
+from memory_lab.documents.enrichment.extractor import fold_ascii, normalize_name
 from memory_lab.storage.filesystem.store import FileStore
 
 
@@ -34,6 +34,8 @@ class FileGraphStore:
                     key,
                     {"id": key, "name": entity.name, "type": entity.type, "record_ids": []},
                 )
+                if entity.type != "concept" and node.get("type") == "concept":
+                    node["type"] = entity.type
                 if record.id not in node["record_ids"]:
                     node["record_ids"].append(record.id)
 
@@ -74,46 +76,88 @@ class FileGraphStore:
             self._remove_record_unlocked(data, record_id)
             self._save(data)
 
-    def query_by_entities(self, entities: list[str], limit: int = 10) -> list[tuple[str, float]]:
+    def query_by_entities(
+        self,
+        entities: list[str],
+        limit: int = 10,
+        *,
+        predicates: list[str] | None = None,
+    ) -> list[tuple[str, float]]:
         data = self._load()
         nodes: dict[str, dict[str, Any]] = data["nodes"]
         edges: list[dict[str, Any]] = data["edges"]
         if not nodes or not entities:
             return []
 
-        query_norms = {normalize_name(e) for e in entities if e.strip()}
-        matched_nodes: set[str] = set()
+        query_norms: set[str] = set()
+        query_folded: set[str] = set()
+        for raw in entities:
+            norm = normalize_name(raw)
+            if norm:
+                query_norms.add(norm)
+                query_folded.add(fold_ascii(norm))
+
+        matched_nodes: dict[str, float] = {}
         for node_id in nodes:
-            if node_id in query_norms or any(q in node_id or node_id in q for q in query_norms if len(q) >= 3):
-                matched_nodes.add(node_id)
+            node_folded = fold_ascii(node_id)
+            if node_id in query_norms or node_folded in query_folded:
+                matched_nodes[node_id] = 1.0
+            elif any(
+                (q in node_id or node_id in q or q in node_folded or node_folded in q)
+                for q in query_folded
+                if len(q) >= 3 and len(node_folded) >= 3
+            ):
+                matched_nodes[node_id] = 0.75
 
         if not matched_nodes:
             return []
 
+        pred_set = set(predicates or [])
         scores: dict[str, float] = defaultdict(float)
-        # 1-hop direct entity matches
-        for node_id in matched_nodes:
-            for record_id in nodes[node_id].get("record_ids", []):
-                scores[record_id] += 1.0
 
-        # 2-hop graph neighbor expansion through edges
-        neighbor_nodes: set[str] = set()
+        # 1-hop direct entity matches
+        for node_id, match_weight in matched_nodes.items():
+            for record_id in nodes[node_id].get("record_ids", []):
+                scores[record_id] += 1.0 * match_weight
+
+        # 1-hop & 2-hop graph neighbor expansion through edges
+        neighbor_weights: dict[str, float] = defaultdict(float)
         for edge in edges:
             subj, obj = edge["subject"], edge["object"]
-            weight = 0.65 if edge.get("predicate") != "co_occurs_with" else 0.35
-            if subj in matched_nodes:
-                neighbor_nodes.add(obj)
-                scores[edge["record_id"]] += weight * float(edge.get("confidence", 1.0))
-            if obj in matched_nodes:
-                neighbor_nodes.add(subj)
-                scores[edge["record_id"]] += weight * float(edge.get("confidence", 1.0))
+            pred = edge.get("predicate", "")
+            is_explicit = pred != "co_occurs_with"
+            base_weight = 0.85 if is_explicit else 0.35
+            if pred_set and pred in pred_set:
+                base_weight += 0.9
+            conf = float(edge.get("confidence", 1.0))
 
-        for neighbor_id in neighbor_nodes - matched_nodes:
+            if subj in matched_nodes:
+                edge_score = base_weight * conf * matched_nodes[subj]
+                scores[edge["record_id"]] += edge_score
+                neighbor_weights[obj] = max(neighbor_weights[obj], edge_score)
+            if obj in matched_nodes:
+                edge_score = base_weight * conf * matched_nodes[obj]
+                scores[edge["record_id"]] += edge_score
+                neighbor_weights[subj] = max(neighbor_weights[subj], edge_score)
+
+        # Pull 2-hop records attached to neighbor nodes & neighbor edges (for multi-hop queries like Bob -> Alice -> Project)
+        hop2_nodes = {nid: w for nid, w in neighbor_weights.items() if nid not in matched_nodes}
+        for neighbor_id, weight in hop2_nodes.items():
             neighbor = nodes.get(neighbor_id)
             if not neighbor:
                 continue
             for record_id in neighbor.get("record_ids", []):
-                scores[record_id] += 0.3
+                scores[record_id] += 0.45 * weight
+
+        for edge in edges:
+            subj, obj = edge["subject"], edge["object"]
+            pred = edge.get("predicate", "")
+            if pred == "co_occurs_with":
+                continue
+            hop2_w = max(hop2_nodes.get(subj, 0.0), hop2_nodes.get(obj, 0.0))
+            if hop2_w > 0.0:
+                bonus = 0.7 if (pred_set and pred in pred_set) else 0.35
+                scores[edge["record_id"]] += bonus * hop2_w * float(edge.get("confidence", 1.0))
 
         ranked = sorted(scores.items(), key=lambda item: (-item[1], item[0]))
         return [(rid, round(score, 6)) for rid, score in ranked[:limit]]
@@ -124,8 +168,18 @@ class FileGraphStore:
         edges = data["edges"]
         if entity:
             target = normalize_name(entity)
-            matched_edges = [e for e in edges if e["subject"] == target or e["object"] == target]
-            related_ids = {target}
+            target_folded = fold_ascii(target)
+            matched_targets = {
+                nid for nid in nodes
+                if nid == target or fold_ascii(nid) == target_folded
+            }
+            if not matched_targets:
+                matched_targets = {target}
+            matched_edges = [
+                e for e in edges
+                if e["subject"] in matched_targets or e["object"] in matched_targets
+            ]
+            related_ids = set(matched_targets)
             for e in matched_edges:
                 related_ids.add(e["subject"])
                 related_ids.add(e["object"])
@@ -239,7 +293,13 @@ class Neo4jGraphStore:
             ]
         )
 
-    def query_by_entities(self, entities: list[str], limit: int = 10) -> list[tuple[str, float]]:
+    def query_by_entities(
+        self,
+        entities: list[str],
+        limit: int = 10,
+        *,
+        predicates: list[str] | None = None,
+    ) -> list[tuple[str, float]]:
         norms = [normalize_name(e) for e in entities if e.strip()]
         if not norms:
             return []
@@ -262,7 +322,7 @@ class Neo4jGraphStore:
             return [(row["row"][0], float(row["row"][1])) for row in rows]
         except Exception:
             if self.mirror:
-                return self.mirror.query_by_entities(entities, limit=limit)
+                return self.mirror.query_by_entities(entities, limit=limit, predicates=predicates)
             raise
 
     def snapshot(self, entity: str | None = None) -> dict[str, Any]:

@@ -108,3 +108,16 @@ class QdrantIndex:
             points_selector=models.PointIdsList(points=point_ids),
             wait=True,
         )
+
+    def delete_by_filter(self, filters: dict[str, str], namespace: str) -> None:
+        query_filter = self._build_filter(filters)
+        if query_filter is None:
+            return
+        name = self.name(namespace)
+        if not self.client.collection_exists(name):
+            return
+        self.client.delete(
+            collection_name=name,
+            points_selector=models.FilterSelector(filter=query_filter),
+            wait=True,
+        )
