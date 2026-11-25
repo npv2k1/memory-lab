@@ -17,6 +17,7 @@ from memory_lab.core.models import (
 from memory_lab.documents.ingestion.service import IngestionService
 from memory_lab.documents.pipeline.service import DocumentPipeline
 from memory_lab.experiments.service import ExperimentService
+from memory_lab.knowledge.service import KnowledgeService, KnowledgeSourceFilter, TableViewName
 from memory_lab.mcp.server import MCPServer
 from memory_lab.memory.service import MemoryService
 from memory_lab.retrieval.embedding import OpenAIEmbeddings
@@ -61,6 +62,7 @@ def create_app(
         )
 
     experiments = experiments or ExperimentService(store, pipeline, memory)
+    knowledge = KnowledgeService(store, pipeline, memory)
     mcp_server = MCPServer(memory)
     ingestion = IngestionService(store)
 
@@ -251,6 +253,62 @@ def create_app(
     def compare_reports(ids: str = Query(min_length=1)):
         report_ids = [part.strip() for part in ids.split(",") if part.strip()]
         return experiments.compare_reports(report_ids)
+
+    # --- Unified Knowledge Visualization (Tables, Interactive Graph & Human Search) ---
+
+    @app.get("/knowledge/overview")
+    def knowledge_overview():
+        return knowledge.overview()
+
+    @app.get("/knowledge/table")
+    def knowledge_table(
+        view: TableViewName = Query("entities"),
+        q: str | None = Query(None),
+        entity_type: str | None = Query(None),
+        source: KnowledgeSourceFilter = Query("all"),
+        limit: int = Query(100, ge=1, le=500),
+        offset: int = Query(0, ge=0),
+    ):
+        return knowledge.table(
+            view=view,
+            q=q,
+            entity_type=entity_type,
+            source=source,
+            limit=limit,
+            offset=offset,
+        )
+
+    @app.get("/knowledge/graph")
+    def knowledge_graph(
+        entity: str | None = Query(None),
+        source: KnowledgeSourceFilter = Query("all"),
+        include_cooccurrence: bool = Query(True),
+        max_nodes: int = Query(80, ge=5, le=200),
+    ):
+        return knowledge.graph(
+            entity=entity,
+            source=source,
+            include_cooccurrence=include_cooccurrence,
+            max_nodes=max_nodes,
+        )
+
+    @app.get("/knowledge/search")
+    def knowledge_search(
+        q: str = Query(min_length=1, max_length=10000),
+        scope: KnowledgeSourceFilter = Query("all"),
+        doc_mode: SearchMode = Query("hybrid"),
+        memory_strategy: MemoryStrategyName = Query("hybrid"),
+        temporal_bucket: str | None = Query(None),
+        limit: int = Query(10, ge=1, le=50),
+    ):
+        return knowledge.search(
+            q,
+            scope=scope,
+            doc_mode=doc_mode,
+            memory_strategy=memory_strategy,
+            temporal_bucket=temporal_bucket,
+            limit=limit,
+        )
 
     return app
 

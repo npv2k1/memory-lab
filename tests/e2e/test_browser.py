@@ -94,3 +94,39 @@ def test_memory_and_experimentation_ui(page):
     page.locator("#btn-compare").click()
     expect(page.locator("#exp-comparison table")).to_contain_text(f"zero-token-{marker}")
 
+
+def test_knowledge_explorer_graph_table_and_search(page):
+    from playwright.sync_api import expect
+    marker = uuid4().hex[:8]
+    page.goto(os.getenv("E2E_BASE_URL", "http://localhost:4321"))
+    expect(page.locator("#status")).to_have_text("Hoàn tất.")
+
+    # Upload & process a document to seed knowledge
+    page.locator("#file").set_input_files(
+        {
+            "name": f"kb-{marker}.txt",
+            "mimeType": "text/plain",
+            "buffer": f"Memory Lab uses Qdrant and BM25 for marker-{marker} since 2026-11-25.".encode(),
+        }
+    )
+    page.locator("#upload button[type='submit']").click()
+    doc = page.locator("#documents article").filter(has_text=f"kb-{marker}.txt")
+    expect(doc).to_be_visible()
+    page.locator("#parser").select_option("text")
+    doc.get_by_role("button", name="Process", exact=True).click()
+    expect(page.locator("#status")).to_have_text("Hoàn tất.")
+
+    # Use Global Search Bar to jump into Knowledge Explorer with unified search
+    page.locator("#global-search-input").fill(f"Qdrant marker-{marker}")
+    page.locator("#global-search-form button[type='submit']").click()
+    expect(page.locator("#tab-knowledge")).to_be_visible()
+    expect(page.locator("#kb-search-results")).to_contain_text(f"marker-{marker}")
+    expect(page.locator("#knowledge-graph-svg g[data-node-id]")).not_to_have_count(0)
+
+    # Switch to Table view and check entities + relations + chunks
+    page.locator("#kb-viz-switch button[data-viz='table']").click()
+    expect(page.locator("#kb-table-container table")).to_contain_text("Qdrant")
+    page.locator("#kb-table-views button[data-view='relations']").click()
+    expect(page.locator("#kb-table-container table")).to_contain_text("uses")
+
+

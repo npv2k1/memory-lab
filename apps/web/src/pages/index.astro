@@ -1,228 +1,453 @@
+---
+import '../styles/app.css';
+---
 <!doctype html>
 <html lang="vi">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Memory Lab — Document Core, Agent Memory & Experimentation</title>
+  <meta name="description" content="Memory Lab — Nền tảng SaaS trực quan hóa kho tri thức, đồ thị thực thể, bảng dữ liệu, bộ nhớ agent và đánh giá truy xuất."/>
+  <title>Memory Lab — Knowledge &amp; Agent Memory Platform</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@600;700&display=swap" rel="stylesheet"/>
 </head>
 <body>
-<main>
-  <header class="topbar">
+<div class="app-shell">
+  <!-- LEFT SAAS SIDEBAR -->
+  <aside class="sidebar" aria-label="Điều hướng chính">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="5" r="3"/><circle cx="5" cy="19" r="3"/><circle cx="19" cy="19" r="3"/>
+          <line x1="10.5" y1="7.6" x2="6.5" y2="16.4"/><line x1="13.5" y1="7.6" x2="17.5" y2="16.4"/><line x1="8" y1="19" x2="16" y2="19"/>
+        </svg>
+      </div>
+      <div>
+        <div class="brand-title">Memory Lab</div>
+        <div class="brand-sub">Knowledge Workspace · v0.2</div>
+      </div>
+    </div>
+
     <div>
-      <small>DOCUMENT CORE · AGENT MEMORY · EXPERIMENTATION</small>
-      <h1>Memory Lab</h1>
-      <p class="subtitle">Nền tảng R&amp;D xử lý tài liệu, bộ nhớ dài hạn (Vector / Graph / ZeroToken / Hybrid) và benchmark truy xuất.</p>
+      <div class="nav-group-label">Không gian làm việc</div>
+      <nav class="sidebar-nav" role="tablist" aria-label="Workspace tabs">
+        <button type="button" class="tab active" data-tab="documents" role="tab" aria-selected="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          <span>Documents &amp; Pipeline</span>
+          <span class="nav-count" id="nav-count-docs">0</span>
+        </button>
+
+        <button type="button" class="tab" data-tab="knowledge" role="tab" aria-selected="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+          <span>Knowledge Explorer</span>
+          <span class="nav-count" id="nav-count-entities">0</span>
+        </button>
+
+        <button type="button" class="tab" data-tab="memory" role="tab" aria-selected="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a8 8 0 0 0-8 8c0 3.3 2 6.2 5 7.4V20a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2v-2.6c3-1.2 5-4.1 5-7.4a8 8 0 0 0-8-8z"/></svg>
+          <span>Memory Playground</span>
+          <span class="nav-count" id="nav-count-mem">0</span>
+        </button>
+
+        <button type="button" class="tab" data-tab="experiments" role="tab" aria-selected="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          <span>Experiments &amp; Eval</span>
+          <span class="nav-count" id="nav-count-exp">0</span>
+        </button>
+      </nav>
     </div>
-    <label class="api-box">
-      <span>API URL</span>
-      <input id="api" value="/api" />
-    </label>
-  </header>
 
-  <nav class="tabs" role="tablist" aria-label="Workspace tabs">
-    <button type="button" class="tab active" data-tab="documents" role="tab" aria-selected="true">1. Documents &amp; Pipeline</button>
-    <button type="button" class="tab" data-tab="memory" role="tab" aria-selected="false">2. Memory Playground</button>
-    <button type="button" class="tab" data-tab="experiments" role="tab" aria-selected="false">3. Experimentation &amp; Comparison</button>
-  </nav>
+    <div class="sidebar-footer">
+      <label class="api-box">
+        <span>API Endpoint</span>
+        <input id="api" value="/api" />
+      </label>
+      <p id="status" class="status-bar" role="status" aria-live="polite"></p>
+    </div>
+  </aside>
 
-  <!-- TAB 1: DOCUMENTS & PIPELINE (Phase 1 + 3 + 4) -->
-  <div id="tab-documents" class="tab-panel active">
-    <section class="card">
-      <h2>1. Tài liệu</h2>
-      <form id="upload" class="row-form">
-        <input type="file" id="file" accept=".pdf,.docx,.md,.txt,.html" required/>
-        <input id="upload-doc-id" placeholder="Optional document_id UUID (tạo version mới)" />
-        <button type="submit">Upload</button>
+  <!-- MAIN WORKSPACE -->
+  <div class="workspace">
+    <header class="topbar">
+      <form id="global-search-form" class="global-search" role="search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="global-search-input" placeholder="Tìm kiếm nhanh toàn bộ kho tri thức (tài liệu, ký ức, thực thể, quan hệ)…" />
+        <span class="kbd">⌘K</span>
+        <button type="submit" class="sm">Tìm</button>
       </form>
-      <div id="documents" class="list"></div>
-    </section>
-
-    <section class="card">
-      <h2>2. Pipeline inspector &amp; Stage cache</h2>
-      <p class="hint">Chọn Process trên tài liệu. PDF/DOCX dùng Docling; TXT/Markdown có thể dùng text. Enrichment tự động trích xuất entity/relation/temporal không dùng LLM.</p>
-      <div class="controls">
-        <label>Parser <select id="parser"><option value="docling">docling</option><option value="text">text</option></select></label>
-        <label>Chunker <select id="chunker"><option value="fixed">fixed</option><option value="hybrid">hybrid</option></select></label>
-        <label>Chunk size <input id="chunk-size" type="number" value="1200" min="100" max="10000" style="width:96px"/></label>
-        <label>Overlap <input id="chunk-overlap" type="number" value="150" min="0" style="width:84px"/></label>
-        <label class="checkbox-label"><input id="enrich-toggle" type="checkbox" checked/> Enrichment</label>
+      <div class="topbar-actions">
+        <button type="button" class="secondary sm" id="btn-open-graph">Đồ thị tri thức</button>
+        <button type="button" class="secondary sm" id="btn-open-table">Bảng tri thức</button>
+        <button type="button" class="secondary sm" id="btn-refresh-all">Đồng bộ</button>
       </div>
-      <div id="runs" class="list"></div>
-      <pre id="artifact">Chọn artifact để xem.</pre>
-    </section>
+    </header>
 
-    <section class="card">
-      <h2>3. Retrieval playground</h2>
-      <form id="search" class="row-form">
-        <input id="query" placeholder="Nội dung cần tìm…" required/>
-        <select id="search-mode" aria-label="Search mode">
-          <option value="dense">dense</option>
-          <option value="sparse">sparse (BM25)</option>
-          <option value="hybrid">hybrid (RRF)</option>
-        </select>
-        <input id="filter-doc-id" placeholder="Filter document_id (tùy chọn)" />
-        <input id="filter-run-id" placeholder="Filter pipeline_run_id (tùy chọn)" />
-        <button type="submit">Tìm kiếm</button>
-      </form>
-      <div id="results" class="list"></div>
-    </section>
-  </div>
-
-  <!-- TAB 2: MEMORY PLAYGROUND (Phase 2 + 3) -->
-  <div id="tab-memory" class="tab-panel">
-    <div class="grid-2">
-      <section class="card">
-        <h2>Lưu ký ức / Interaction trace</h2>
-        <form id="mem-store-form" class="stack-form">
-          <textarea id="mem-content" rows="4" placeholder="Ví dụ: Memory Lab uses Qdrant and Neo4j for hybrid retrieval since 2026-11-25." required></textarea>
-          <div class="controls">
-            <label>Strategy
-              <select id="mem-store-strategy">
-                <option value="hybrid">hybrid</option>
-                <option value="zero_token">zero_token</option>
-                <option value="graph">graph</option>
-                <option value="vector">vector</option>
-              </select>
-            </label>
-            <label>Session <input id="mem-session" value="default" style="width:120px"/></label>
-            <label>Role
-              <select id="mem-role">
-                <option value="user">user</option>
-                <option value="assistant">assistant</option>
-                <option value="system">system</option>
-                <option value="tool">tool</option>
-              </select>
-            </label>
-            <label>Tags <input id="mem-tags" placeholder="rag, architecture"/></label>
-          </div>
-          <button type="submit">Store memory</button>
-        </form>
-      </section>
-
-      <section class="card">
-        <h2>Tìm kiếm Memory</h2>
-        <form id="mem-search-form" class="stack-form">
-          <input id="mem-query" placeholder="Truy vấn ký ức…" required/>
-          <div class="controls">
-            <label>Strategy
-              <select id="mem-search-strategy">
-                <option value="hybrid">hybrid</option>
-                <option value="zero_token">zero_token</option>
-                <option value="graph">graph</option>
-                <option value="vector">vector</option>
-              </select>
-            </label>
-            <label>Session <input id="mem-search-session" placeholder="all" style="width:110px"/></label>
-            <label>Temporal <input id="mem-search-temporal" placeholder="YYYY-MM-DD" style="width:120px"/></label>
-            <label>Limit <input id="mem-search-limit" type="number" value="5" min="1" max="50" style="width:70px"/></label>
-          </div>
-          <button type="submit">Search memory</button>
-        </form>
-        <div id="mem-results" class="list"></div>
-      </section>
-    </div>
-
-    <section class="card">
-      <div class="section-head">
-        <h2>Memory Records, Temporal Hierarchy &amp; Knowledge Graph</h2>
-        <div class="controls">
-          <button type="button" class="secondary" id="btn-refresh-mem">Làm mới</button>
-          <input id="graph-entity-filter" placeholder="Lọc entity trong Graph…" />
-          <button type="button" class="secondary" id="btn-filter-graph">Xem Graph</button>
-        </div>
-      </div>
-      <div class="grid-3">
+    <main class="workspace-content">
+      <!-- KPI OVERVIEW STRIP -->
+      <div class="page-header">
         <div>
-          <h3>Records (<span id="mem-record-count">0</span>)</h3>
-          <div id="mem-records" class="list compact"></div>
-        </div>
-        <div>
-          <h3>Temporal Hierarchy</h3>
-          <pre id="mem-temporal" class="compact-pre">Chưa có dữ liệu.</pre>
-        </div>
-        <div>
-          <h3>Knowledge Graph</h3>
-          <pre id="mem-graph" class="compact-pre">Chưa có dữ liệu.</pre>
+          <h1 id="page-title">Kho tri thức &amp; Pipeline tài liệu</h1>
+          <p class="page-subtitle" id="page-subtitle">Nạp tài liệu, xử lý trích xuất phi-LLM, kiểm tra stage cache và trực quan hóa tri thức hợp nhất.</p>
         </div>
       </div>
-    </section>
-  </div>
 
-  <!-- TAB 3: EXPERIMENTATION & COMPARISON (Phase 4) -->
-  <div id="tab-experiments" class="tab-panel">
-    <div class="grid-2">
-      <section class="card">
-        <h2>1. Benchmark Datasets</h2>
-        <form id="exp-dataset-form" class="stack-form">
-          <input id="exp-ds-name" placeholder="Tên dataset (vd: core-retrieval-v1)" required/>
-          <input id="exp-ds-desc" placeholder="Mô tả ngắn"/>
-          <textarea id="exp-ds-cases" rows="5" placeholder='[{"query": "evidence", "relevant_substrings": ["Memory Lab"]}]' required></textarea>
-          <div class="controls">
-            <button type="submit">Tạo dataset</button>
-            <button type="button" class="secondary" id="btn-ds-sample">Chèn mẫu JSON</button>
-          </div>
-        </form>
-        <div id="exp-datasets" class="list compact"></div>
+      <section class="kpi-strip" aria-label="Thống kê kho tri thức">
+        <div class="kpi-item"><div class="kpi-label">Tài liệu</div><div class="kpi-value" id="kpi-docs">0</div></div>
+        <div class="kpi-item"><div class="kpi-label">Đoạn tri thức (Chunks)</div><div class="kpi-value" id="kpi-chunks">0</div></div>
+        <div class="kpi-item"><div class="kpi-label">Ký ức Agent</div><div class="kpi-value" id="kpi-memories">0</div></div>
+        <div class="kpi-item"><div class="kpi-label">Thực thể (Nodes)</div><div class="kpi-value" id="kpi-entities">0</div></div>
+        <div class="kpi-item"><div class="kpi-label">Quan hệ (Edges)</div><div class="kpi-value" id="kpi-relations">0</div></div>
+        <div class="kpi-item"><div class="kpi-label">Mốc thời gian</div><div class="kpi-value" id="kpi-temporal">0</div></div>
       </section>
 
-      <section class="card">
-        <h2>2. Chạy Benchmark Experiment</h2>
-        <form id="exp-run-form" class="stack-form">
-          <input id="exp-run-name" placeholder="Tên cấu hình (vd: hybrid-rrf-k5)" required/>
-          <div class="controls">
-            <label>Dataset <select id="exp-run-dataset"></select></label>
-            <label>Target
-              <select id="exp-run-target">
-                <option value="documents">documents</option>
-                <option value="memory">memory</option>
-              </select>
-            </label>
-            <label>K <input id="exp-run-k" type="number" value="5" min="1" max="50" style="width:70px"/></label>
+      <!-- TAB 1: DOCUMENTS & PIPELINE (Active by default — preserves all Phase 1 E2E selectors) -->
+      <div id="tab-documents" class="tab-panel active">
+        <section class="card">
+          <div class="card-head">
+            <h2>1. Tài liệu nguồn</h2>
+            <span class="pill accent">Filesystem Source of Truth</span>
           </div>
-          <div class="controls">
-            <label>Doc mode
-              <select id="exp-run-mode">
-                <option value="dense">dense</option>
-                <option value="sparse">sparse</option>
-                <option value="hybrid">hybrid</option>
-              </select>
-            </label>
-            <label>Memory strategy
-              <select id="exp-run-strategy">
-                <option value="hybrid">hybrid</option>
-                <option value="zero_token">zero_token</option>
-                <option value="graph">graph</option>
-                <option value="vector">vector</option>
-              </select>
-            </label>
-          </div>
-          <div class="controls">
-            <input id="exp-run-doc-filter" placeholder="Filter document_id (tùy chọn)"/>
-            <input id="exp-run-run-filter" placeholder="Filter pipeline_run_id (tùy chọn)"/>
-          </div>
-          <button type="submit">Chạy đánh giá (Recall@K / MRR / nDCG)</button>
-        </form>
-      </section>
-    </div>
+          <form id="upload" class="row-form">
+            <input type="file" id="file" accept=".pdf,.docx,.md,.txt,.html" required/>
+            <input id="upload-doc-id" placeholder="Optional document_id UUID (nhóm version mới)" />
+            <button type="submit">Upload</button>
+          </form>
+          <div id="documents"></div>
+        </section>
 
-    <section class="card">
-      <div class="section-head">
-        <h2>3. Comparison UI (Recall@K · MRR · nDCG@K · Latency)</h2>
-        <button type="button" id="btn-compare">So sánh các báo cáo đã chọn</button>
+        <section class="card">
+          <div class="card-head">
+            <h2>2. Pipeline inspector &amp; Stage cache</h2>
+            <span class="pill">Non-Generative Enrichment</span>
+          </div>
+          <p class="hint">Chọn Process trên tài liệu. PDF/DOCX dùng Docling; TXT/Markdown dùng text. Có thể xóa cache từng stage bằng Invalidate.</p>
+          <div class="controls">
+            <label>Parser <select id="parser"><option value="docling">docling</option><option value="text">text</option></select></label>
+            <label>Chunker <select id="chunker"><option value="fixed">fixed</option><option value="hybrid">hybrid</option></select></label>
+            <label>Chunk size <input id="chunk-size" type="number" value="1200" min="100" max="10000" style="width:92px"/></label>
+            <label>Overlap <input id="chunk-overlap" type="number" value="150" min="0" style="width:80px"/></label>
+            <label><input id="enrich-toggle" type="checkbox" checked/> Enrichment</label>
+          </div>
+          <div id="runs"></div>
+          <pre id="artifact">Chọn artifact để xem.</pre>
+        </section>
+
+        <section class="card">
+          <div class="card-head">
+            <h2>3. Retrieval playground</h2>
+            <span class="pill">Dense · BM25 · Hybrid RRF</span>
+          </div>
+          <form id="search" class="row-form">
+            <input id="query" placeholder="Nội dung cần tìm trong tài liệu…" required/>
+            <select id="search-mode" aria-label="Search mode">
+              <option value="dense">dense</option>
+              <option value="sparse">sparse (BM25)</option>
+              <option value="hybrid">hybrid (RRF)</option>
+            </select>
+            <input id="filter-doc-id" placeholder="Filter document_id" style="width:170px"/>
+            <input id="filter-run-id" placeholder="Filter pipeline_run_id" style="width:170px"/>
+            <button type="submit">Tìm kiếm</button>
+          </form>
+          <div id="results"></div>
+        </section>
       </div>
-      <div id="exp-reports" class="list compact"></div>
-      <div id="exp-comparison" class="table-wrap"></div>
-    </section>
-  </div>
 
-  <p id="status" role="status" aria-live="polite"></p>
-</main>
+      <!-- TAB 2: KNOWLEDGE EXPLORER (Unified Human Search + Interactive Graph + Knowledge Tables) -->
+      <div id="tab-knowledge" class="tab-panel">
+        <!-- Unified Human Search -->
+        <section class="card">
+          <div class="card-head">
+            <h2>Tìm kiếm tri thức hợp nhất (Human Search)</h2>
+            <div class="segmented" id="kb-scope-control">
+              <button type="button" class="active" data-scope="all">Tất cả</button>
+              <button type="button" data-scope="documents">Tài liệu</button>
+              <button type="button" data-scope="memory">Ký ức</button>
+            </div>
+          </div>
+          <form id="kb-search-form" class="row-form">
+            <input id="kb-query" placeholder="Nhập từ khóa, thực thể, mã lỗi, hoặc câu hỏi tiếng Việt / tiếng Anh…" required/>
+            <select id="kb-doc-mode" aria-label="Document search mode">
+              <option value="hybrid">Docs: hybrid (RRF)</option>
+              <option value="sparse">Docs: sparse (BM25)</option>
+              <option value="dense">Docs: dense</option>
+            </select>
+            <select id="kb-mem-strategy" aria-label="Memory strategy">
+              <option value="hybrid">Memory: hybrid</option>
+              <option value="zero_token">Memory: zero_token</option>
+              <option value="graph">Memory: graph</option>
+              <option value="vector">Memory: vector</option>
+            </select>
+            <input id="kb-temporal" placeholder="Mốc YYYY-MM" style="width:130px"/>
+            <button type="submit">Tìm tri thức</button>
+          </form>
+          <div id="kb-search-meta" class="meta"></div>
+          <div id="kb-search-entities" class="meta"></div>
+          <div id="kb-search-results"></div>
+        </section>
+
+        <!-- Interactive Visualization Switcher: Graph & Table -->
+        <section class="card">
+          <div class="card-head">
+            <h2>Trực quan hóa Kho tri thức</h2>
+            <div class="controls">
+              <div class="segmented" id="kb-viz-switch">
+                <button type="button" class="active" data-viz="graph">Đồ thị tri thức</button>
+                <button type="button" data-viz="table">Bảng dữ liệu</button>
+              </div>
+              <select id="kb-source-filter" aria-label="Source filter">
+                <option value="all">Nguồn: Tất cả</option>
+                <option value="documents">Chỉ Tài liệu</option>
+                <option value="memory">Chỉ Ký ức</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- GRAPH VIEW -->
+          <div id="kb-viz-graph">
+            <div class="controls">
+              <input id="kb-graph-entity" placeholder="Tập trung theo thực thể (vd: Qdrant, Neo4j)…" style="min-width:260px"/>
+              <label><input id="kb-graph-cooccur" type="checkbox" checked/> Hiện quan hệ đồng xuất hiện</label>
+              <button type="button" id="btn-kb-graph-apply">Cập nhật đồ thị</button>
+              <button type="button" class="secondary" id="btn-kb-graph-clear">Xem toàn bộ</button>
+            </div>
+
+            <div class="graph-layout">
+              <div class="graph-stage-wrap">
+                <div class="graph-toolbar">
+                  <button type="button" class="secondary sm" id="btn-zoom-in" title="Phóng to">+</button>
+                  <button type="button" class="secondary sm" id="btn-zoom-out" title="Thu nhỏ">−</button>
+                  <button type="button" class="secondary sm" id="btn-zoom-reset" title="Đặt lại">Reset</button>
+                </div>
+                <svg id="knowledge-graph-svg" role="img" aria-label="Đồ thị tri thức tương tác"></svg>
+                <div class="graph-legend">
+                  <span class="legend-dot"><i style="background:#0e7490"></i>Technology</span>
+                  <span class="legend-dot"><i style="background:#3b5998"></i>Organization</span>
+                  <span class="legend-dot"><i style="background:#146c43"></i>Concept</span>
+                  <span class="legend-dot"><i style="background:#b45309"></i>Person / Date</span>
+                </div>
+              </div>
+
+              <aside class="graph-inspector" id="kb-graph-inspector" aria-label="Chi tiết thực thể">
+                <div class="inspector-empty">Nhấp vào một nút trên đồ thị để xem thông tin chi tiết, quan hệ liên kết và nguồn chứng cứ.</div>
+              </aside>
+            </div>
+          </div>
+
+          <!-- TABLE VIEW -->
+          <div id="kb-viz-table" style="display:none">
+            <div class="controls" style="justify-content:space-between; margin-bottom:10px">
+              <div class="segmented" id="kb-table-views">
+                <button type="button" class="active" data-view="entities">Thực thể</button>
+                <button type="button" data-view="relations">Quan hệ</button>
+                <button type="button" data-view="chunks">Đoạn tài liệu</button>
+                <button type="button" data-view="memories">Ký ức</button>
+                <button type="button" data-view="timeline">Dòng thời gian</button>
+              </div>
+              <form id="kb-table-filter-form" class="controls" style="flex:1; justify-content:flex-end">
+                <input id="kb-table-filter" placeholder="Lọc nhanh trong bảng…"/>
+                <button type="submit" class="secondary">Lọc</button>
+              </form>
+            </div>
+            <div id="kb-table-summary" class="hint"></div>
+            <div id="kb-table-container" class="table-wrap"></div>
+          </div>
+        </section>
+      </div>
+
+      <!-- TAB 3: MEMORY PLAYGROUND (Preserves all Phase 2 & 3 E2E selectors) -->
+      <div id="tab-memory" class="tab-panel">
+        <div class="grid-2">
+          <section class="card">
+            <div class="card-head">
+              <h2>Lưu ký ức / Interaction trace</h2>
+              <span class="pill accent">MCP Ready</span>
+            </div>
+            <form id="mem-store-form" class="stack-form">
+              <textarea id="mem-content" rows="4" placeholder="Ví dụ: Memory Lab uses Qdrant and Neo4j for hybrid retrieval since 2026-11-25." required></textarea>
+              <div class="controls">
+                <label>Strategy
+                  <select id="mem-store-strategy">
+                    <option value="hybrid">hybrid</option>
+                    <option value="zero_token">zero_token</option>
+                    <option value="graph">graph</option>
+                    <option value="vector">vector</option>
+                  </select>
+                </label>
+                <label>Session <input id="mem-session" value="default" style="width:120px"/></label>
+                <label>Role
+                  <select id="mem-role">
+                    <option value="user">user</option>
+                    <option value="assistant">assistant</option>
+                    <option value="system">system</option>
+                    <option value="tool">tool</option>
+                  </select>
+                </label>
+                <label>Tags <input id="mem-tags" placeholder="rag, architecture"/></label>
+              </div>
+              <button type="submit">Store memory</button>
+            </form>
+          </section>
+
+          <section class="card">
+            <div class="card-head">
+              <h2>Tìm kiếm Memory</h2>
+              <span class="pill">RRF Score Breakdown</span>
+            </div>
+            <form id="mem-search-form" class="stack-form">
+              <input id="mem-query" placeholder="Truy vấn ký ức…" required/>
+              <div class="controls">
+                <label>Strategy
+                  <select id="mem-search-strategy">
+                    <option value="hybrid">hybrid</option>
+                    <option value="zero_token">zero_token</option>
+                    <option value="graph">graph</option>
+                    <option value="vector">vector</option>
+                  </select>
+                </label>
+                <label>Session <input id="mem-search-session" placeholder="all" style="width:104px"/></label>
+                <label>Temporal <input id="mem-search-temporal" placeholder="YYYY-MM-DD" style="width:120px"/></label>
+                <label>Limit <input id="mem-search-limit" type="number" value="5" min="1" max="50" style="width:68px"/></label>
+              </div>
+              <button type="submit">Search memory</button>
+            </form>
+            <div id="mem-results"></div>
+          </section>
+        </div>
+
+        <section class="card">
+          <div class="card-head">
+            <h2>Memory Records, Temporal Hierarchy &amp; Knowledge Graph</h2>
+            <div class="controls">
+              <button type="button" class="secondary" id="btn-refresh-mem">Làm mới</button>
+              <input id="graph-entity-filter" placeholder="Lọc entity trong Graph…" />
+              <button type="button" class="secondary" id="btn-filter-graph">Xem Graph</button>
+            </div>
+          </div>
+          <div class="grid-3">
+            <div>
+              <h3>Records (<span id="mem-record-count">0</span>)</h3>
+              <div id="mem-records"></div>
+            </div>
+            <div>
+              <h3>Temporal Hierarchy</h3>
+              <pre id="mem-temporal" class="compact-pre">Chưa có dữ liệu.</pre>
+            </div>
+            <div>
+              <h3>Knowledge Graph (JSON)</h3>
+              <pre id="mem-graph" class="compact-pre">Chưa có dữ liệu.</pre>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- TAB 4: EXPERIMENTATION & COMPARISON (Preserves all Phase 4 E2E selectors) -->
+      <div id="tab-experiments" class="tab-panel">
+        <div class="grid-2">
+          <section class="card">
+            <div class="card-head">
+              <h2>1. Benchmark Datasets</h2>
+              <span class="pill">Content-Addressed Hash</span>
+            </div>
+            <form id="exp-dataset-form" class="stack-form">
+              <input id="exp-ds-name" placeholder="Tên dataset (vd: core-retrieval-v1)" required/>
+              <input id="exp-ds-desc" placeholder="Mô tả ngắn"/>
+              <textarea id="exp-ds-cases" rows="5" placeholder='[{"query": "evidence", "relevant_substrings": ["Memory Lab"]}]' required></textarea>
+              <div class="controls">
+                <button type="submit">Tạo dataset</button>
+                <button type="button" class="secondary" id="btn-ds-sample">Chèn mẫu JSON</button>
+              </div>
+            </form>
+            <div id="exp-datasets"></div>
+          </section>
+
+          <section class="card">
+            <div class="card-head">
+              <h2>2. Chạy Benchmark Experiment</h2>
+              <span class="pill">Recall@K · MRR · nDCG@K</span>
+            </div>
+            <form id="exp-run-form" class="stack-form">
+              <input id="exp-run-name" placeholder="Tên cấu hình (vd: hybrid-rrf-k5)" required/>
+              <div class="controls">
+                <label>Dataset <select id="exp-run-dataset"></select></label>
+                <label>Target
+                  <select id="exp-run-target">
+                    <option value="documents">documents</option>
+                    <option value="memory">memory</option>
+                  </select>
+                </label>
+                <label>K <input id="exp-run-k" type="number" value="5" min="1" max="50" style="width:68px"/></label>
+              </div>
+              <div class="controls">
+                <label>Doc mode
+                  <select id="exp-run-mode">
+                    <option value="dense">dense</option>
+                    <option value="sparse">sparse</option>
+                    <option value="hybrid">hybrid</option>
+                  </select>
+                </label>
+                <label>Memory strategy
+                  <select id="exp-run-strategy">
+                    <option value="hybrid">hybrid</option>
+                    <option value="zero_token">zero_token</option>
+                    <option value="graph">graph</option>
+                    <option value="vector">vector</option>
+                  </select>
+                </label>
+              </div>
+              <div class="controls">
+                <input id="exp-run-doc-filter" placeholder="Filter document_id (tùy chọn)"/>
+                <input id="exp-run-run-filter" placeholder="Filter pipeline_run_id (tùy chọn)"/>
+              </div>
+              <button type="submit">Chạy đánh giá (Recall@K / MRR / nDCG)</button>
+            </form>
+          </section>
+        </div>
+
+        <section class="card">
+          <div class="card-head">
+            <h2>3. Comparison UI (Recall@K · MRR · nDCG@K · Latency)</h2>
+            <button type="button" id="btn-compare">So sánh các báo cáo đã chọn</button>
+          </div>
+          <div id="exp-reports"></div>
+          <div id="exp-comparison"></div>
+        </section>
+      </div>
+    </main>
+  </div>
+</div>
 
 <script>
+import { InteractiveKnowledgeGraph, type GraphEdgeData, type GraphNodeData } from '../lib/graph';
+
 const el = (id: string) => document.getElementById(id)!;
 const input = (id: string) => el(id) as HTMLInputElement;
 const select = (id: string) => el(id) as HTMLSelectElement;
 const base = () => input('api').value.replace(/\/$/, '');
+
+const TAB_META: Record<string, { title: string; subtitle: string }> = {
+  documents: {
+    title: 'Kho tri thức & Pipeline tài liệu',
+    subtitle: 'Nạp tài liệu, xử lý trích xuất phi-LLM, kiểm tra stage cache và truy xuất nguồn chứng cứ.',
+  },
+  knowledge: {
+    title: 'Knowledge Explorer — Bảng, Đồ thị & Tìm kiếm',
+    subtitle: 'Trực quan hóa toàn bộ thực thể, quan hệ và tài liệu thành đồ thị tương tác hoặc bảng dữ liệu có thể tự tìm kiếm.',
+  },
+  memory: {
+    title: 'Agent Memory Playground',
+    subtitle: 'Lưu trữ interaction traces, kiểm thử Vector / Graph / ZeroToken / Hybrid và phân cấp thời gian.',
+  },
+  experiments: {
+    title: 'Experimentation & Benchmark Evaluation',
+    subtitle: 'Tạo bộ đề đánh giá có dataset_hash, đo Recall@K, MRR, nDCG@K và so sánh cấu hình song song.',
+  },
+};
+
+let activeKbScope = 'all';
+let activeKbTableView = 'entities';
+let activeKbViz = 'graph';
+let graphEngine: InteractiveKnowledgeGraph | null = null;
 
 async function request(path: string, init?: RequestInit) {
   const response = await fetch(base() + path, init);
@@ -232,12 +457,16 @@ async function request(path: string, init?: RequestInit) {
 }
 
 async function action(work: () => Promise<void>) {
-  el('status').textContent = 'Đang xử lý…';
+  const statusEl = el('status');
+  statusEl.className = 'status-bar';
+  statusEl.textContent = 'Đang xử lý…';
   try {
     await work();
-    el('status').textContent = 'Hoàn tất.';
+    statusEl.className = 'status-bar ok';
+    statusEl.textContent = 'Hoàn tất.';
   } catch (error) {
-    el('status').textContent = String(error);
+    statusEl.className = 'status-bar err';
+    statusEl.textContent = String(error);
   }
 }
 
@@ -250,41 +479,92 @@ function button(label: string, work: () => Promise<void>, className = '') {
   return node;
 }
 
-function pill(text: string) {
+function pill(text: string, extraClass = '') {
   const span = document.createElement('span');
-  span.className = 'pill';
+  span.className = extraClass ? `pill ${extraClass}` : 'pill';
   span.textContent = text;
   return span;
 }
 
-// --- Tab navigation ---
-for (const tabBtn of document.querySelectorAll<HTMLButtonElement>('.tab')) {
-  tabBtn.onclick = () => {
-    const target = tabBtn.dataset.tab!;
-    document.querySelectorAll('.tab').forEach((b) => {
-      const active = b === tabBtn;
-      b.classList.toggle('active', active);
-      b.setAttribute('aria-selected', String(active));
-    });
-    document.querySelectorAll('.tab-panel').forEach((p) => {
-      p.classList.toggle('active', p.id === `tab-${target}`);
-    });
-  };
+function switchTab(target: string) {
+  document.querySelectorAll<HTMLButtonElement>('.tab').forEach((b) => {
+    const active = b.dataset.tab === target;
+    b.classList.toggle('active', active);
+    b.setAttribute('aria-selected', String(active));
+  });
+  document.querySelectorAll('.tab-panel').forEach((p) => {
+    p.classList.toggle('active', p.id === `tab-${target}`);
+  });
+  const meta = TAB_META[target];
+  if (meta) {
+    el('page-title').textContent = meta.title;
+    el('page-subtitle').textContent = meta.subtitle;
+  }
+  if (target === 'knowledge') {
+    action(refreshKnowledge);
+  }
 }
 
-// --- Phase 1, 3, 4: Documents & Pipeline ---
+function switchKbViz(viz: 'graph' | 'table') {
+  activeKbViz = viz;
+  document.querySelectorAll<HTMLButtonElement>('#kb-viz-switch button').forEach((b) => {
+    b.classList.toggle('active', b.dataset.viz === viz);
+  });
+  el('kb-viz-graph').style.display = viz === 'graph' ? 'block' : 'none';
+  el('kb-viz-table').style.display = viz === 'table' ? 'block' : 'none';
+  if (viz === 'graph') action(refreshKnowledgeGraph);
+  else action(refreshKnowledgeTable);
+}
+
+// --- Tab navigation & Shortcuts ---
+for (const tabBtn of document.querySelectorAll<HTMLButtonElement>('.tab')) {
+  tabBtn.onclick = () => switchTab(tabBtn.dataset.tab!);
+}
+
+window.addEventListener('keydown', (ev) => {
+  if ((ev.metaKey || ev.ctrlKey) && ev.key.toLowerCase() === 'k') {
+    ev.preventDefault();
+    input('global-search-input').focus();
+  }
+});
+
+// --- Workspace Overview KPIs ---
+async function refreshOverview() {
+  const ov = await request('/knowledge/overview');
+  el('kpi-docs').textContent = String(ov.documents_count);
+  el('kpi-chunks').textContent = String(ov.chunks_count);
+  el('kpi-memories').textContent = String(ov.memory_records_count);
+  el('kpi-entities').textContent = String(ov.entities_count);
+  el('kpi-relations').textContent = String(ov.relations_count);
+  el('kpi-temporal').textContent = String(ov.temporal_anchors_count);
+  el('nav-count-docs').textContent = String(ov.documents_count);
+  el('nav-count-entities').textContent = String(ov.entities_count);
+  el('nav-count-mem').textContent = String(ov.memory_records_count);
+  el('nav-count-exp').textContent = String(ov.reports_count);
+}
+
+// --- TAB 1: Documents & Pipeline ---
 async function refreshDocuments() {
   const docs = await request('/documents');
   el('documents').replaceChildren();
+  if (!docs.length) {
+    const empty = document.createElement('div');
+    empty.className = 'empty-state';
+    empty.textContent = 'Chưa có tài liệu nào. Upload PDF, DOCX, Markdown, TXT hoặc HTML để bắt đầu xây dựng kho tri thức.';
+    el('documents').append(empty);
+  }
   for (const doc of docs) {
     const row = document.createElement('article');
     const title = document.createElement('p');
-    title.textContent = `${doc.filename} · ${doc.version.slice(0, 10)}`;
+    const strong = document.createElement('strong');
+    strong.textContent = `${doc.filename} · ${doc.version.slice(0, 10)}`;
+    title.append(strong);
     const meta = document.createElement('div');
     meta.className = 'meta';
-    meta.append(pill(`doc:${doc.id.slice(0, 10)}`));
-    row.append(title, meta);
-    row.append(
+    meta.append(pill(`doc:${doc.id.slice(0, 10)}`), pill(`sha:${doc.content_hash.slice(0, 10)}`));
+    const controls = document.createElement('div');
+    controls.className = 'controls';
+    controls.append(
       button('Process', async () => {
         const payload = {
           parser: select('parser').value,
@@ -298,9 +578,10 @@ async function refreshDocuments() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
-        await refreshDocuments();
-      })
+        await Promise.all([refreshDocuments(), refreshOverview()]);
+      }, 'sm')
     );
+    row.append(title, meta, controls);
     el('documents').append(row);
   }
 
@@ -325,7 +606,7 @@ async function refreshDocuments() {
             null,
             2
           );
-        })
+        }, 'secondary sm')
       );
     }
 
@@ -347,9 +628,9 @@ async function refreshDocuments() {
             body: JSON.stringify({ stages: [stageSelect.value] }),
           });
           el('artifact').textContent = JSON.stringify(updated, null, 2);
-          await refreshDocuments();
+          await Promise.all([refreshDocuments(), refreshOverview()]);
         },
-        'secondary'
+        'danger sm'
       )
     );
     row.append(actions);
@@ -357,7 +638,317 @@ async function refreshDocuments() {
   }
 }
 
-// --- Phase 2 & 3: Memory Playground ---
+// --- TAB 2: Knowledge Explorer (Graph + Table + Unified Human Search) ---
+function renderGraphInspector(node: GraphNodeData, edges: GraphEdgeData[]) {
+  const panel = el('kb-graph-inspector');
+  panel.replaceChildren();
+
+  const head = document.createElement('div');
+  const h = document.createElement('h3');
+  h.style.margin = '0 0 6px';
+  h.style.color = 'var(--ink-primary)';
+  h.style.fontSize = '17px';
+  h.textContent = node.name;
+  const meta = document.createElement('div');
+  meta.className = 'meta';
+  meta.append(
+    pill(node.type, `type-${node.type}`),
+    pill(`${node.mentions} mentions`),
+    pill(`${node.degree} links`),
+    ...node.sources.map((s) => pill(s, 'accent'))
+  );
+  head.append(h, meta);
+
+  const searchBtn = button(
+    `Tìm kiếm "${node.name}"`,
+    async () => {
+      input('kb-query').value = node.name;
+      await runUnifiedKnowledgeSearch(node.name);
+    },
+    'sm'
+  );
+
+  const relHeader = document.createElement('h3');
+  relHeader.style.margin = '6px 0 0';
+  relHeader.textContent = `Quan hệ liên kết (${edges.length})`;
+
+  const relList = document.createElement('div');
+  relList.style.display = 'flex';
+  relList.style.flexDirection = 'column';
+  relList.style.gap = '6px';
+  relList.style.overflowY = 'auto';
+  relList.style.maxHeight = '220px';
+
+  for (const edge of edges.slice(0, 15)) {
+    const item = document.createElement('div');
+    item.className = 'rel-item';
+    const other = edge.source === node.id ? edge.target : edge.source;
+    const arrow = edge.source === node.id ? `→ ${other}` : `← ${other}`;
+    const line1 = document.createElement('div');
+    const code = document.createElement('code');
+    code.textContent = edge.predicate;
+    line1.append(code, ` ${arrow}`);
+    const line2 = document.createElement('div');
+    line2.style.fontSize = '11.5px';
+    line2.style.color = 'var(--ink-muted)';
+    line2.style.marginTop = '3px';
+    line2.textContent = `${edge.source_label} · conf ${edge.confidence}`;
+    item.append(line1, line2);
+    relList.append(item);
+  }
+  if (!edges.length) {
+    const p = document.createElement('p');
+    p.className = 'hint';
+    p.textContent = 'Chưa có quan hệ trực tiếp.';
+    relList.append(p);
+  }
+
+  const srcHeader = document.createElement('h3');
+  srcHeader.style.margin = '4px 0 0';
+  srcHeader.textContent = 'Nguồn chứng cứ';
+  const srcList = document.createElement('div');
+  srcList.className = 'meta';
+  for (const ref of node.evidence_refs) {
+    srcList.append(pill(ref));
+  }
+
+  panel.append(head, searchBtn, relHeader, relList, srcHeader, srcList);
+}
+
+async function refreshKnowledgeGraph() {
+  const svg = document.getElementById('knowledge-graph-svg') as unknown as SVGSVGElement;
+  if (!graphEngine) {
+    graphEngine = new InteractiveKnowledgeGraph(svg, renderGraphInspector);
+  }
+  const params = new URLSearchParams({
+    source: select('kb-source-filter').value,
+    include_cooccurrence: String(input('kb-graph-cooccur').checked),
+    max_nodes: '80',
+  });
+  const focus = input('kb-graph-entity').value.trim();
+  if (focus) params.set('entity', focus);
+
+  const payload = await request(`/knowledge/graph?${params.toString()}`);
+  graphEngine.render(payload);
+}
+
+async function refreshKnowledgeTable() {
+  const params = new URLSearchParams({
+    view: activeKbTableView,
+    source: select('kb-source-filter').value,
+    limit: '100',
+  });
+  const q = input('kb-table-filter').value.trim();
+  if (q) params.set('q', q);
+
+  const data = await request(`/knowledge/table?${params.toString()}`);
+  el('kb-table-summary').textContent = `Hiển thị ${data.rows.length} / ${data.total} bản ghi (${data.view}). Nhấp vào thực thể để xem trên đồ thị.`;
+
+  const wrap = el('kb-table-container');
+  wrap.replaceChildren();
+  if (!data.rows.length) {
+    const empty = document.createElement('div');
+    empty.className = 'empty-state';
+    empty.textContent = 'Không có dữ liệu phù hợp với bộ lọc hiện tại.';
+    wrap.append(empty);
+    return;
+  }
+
+  const table = document.createElement('table');
+  const thead = document.createElement('thead');
+  const headTr = document.createElement('tr');
+  const LABELS: Record<string, string> = {
+    name: 'Thực thể',
+    type: 'Loại',
+    mentions: 'Lượt nhắc',
+    degree: 'Liên kết',
+    sources: 'Nguồn',
+    evidence_refs: 'Chứng cứ',
+    subject: 'Chủ thể',
+    predicate: 'Quan hệ',
+    object: 'Đối tượng',
+    confidence: 'Độ tin cậy',
+    source_type: 'Loại nguồn',
+    source_label: 'Nguồn gốc',
+    filename: 'Tài liệu',
+    block_ids: 'Blocks',
+    entities: 'Thực thể',
+    temporal: 'Thời gian',
+    preview: 'Trích đoạn',
+    source_url: 'Tải gốc',
+    timestamp: 'Thời gian',
+    strategy: 'Chiến lược',
+    session_id: 'Session',
+    tags: 'Tags',
+    summary: 'Tóm tắt',
+    date: 'Ngày / Mốc',
+    granularity: 'Cấp độ',
+    label: 'Nhãn nguồn',
+  };
+
+  for (const col of data.columns) {
+    const th = document.createElement('th');
+    th.textContent = LABELS[col] || col;
+    headTr.append(th);
+  }
+  thead.append(headTr);
+
+  const tbody = document.createElement('tbody');
+  for (const row of data.rows) {
+    const tr = document.createElement('tr');
+    for (const col of data.columns) {
+      const td = document.createElement('td');
+      const val = row[col];
+      if (col === 'name' && activeKbTableView === 'entities') {
+        const link = document.createElement('a');
+        link.href = '#';
+        link.textContent = String(val);
+        link.onclick = (ev) => {
+          ev.preventDefault();
+          input('kb-graph-entity').value = String(val);
+          switchKbViz('graph');
+        };
+        td.append(link);
+      } else if (col === 'type') {
+        td.append(pill(String(val), `type-${val}`));
+      } else if (col === 'predicate') {
+        const code = document.createElement('code');
+        code.textContent = String(val);
+        td.append(code);
+      } else if (col === 'source_url' && val) {
+        const a = document.createElement('a');
+        a.href = base() + String(val);
+        a.textContent = 'Tải file';
+        td.append(a);
+      } else if (Array.isArray(val)) {
+        const wrapPills = document.createElement('div');
+        wrapPills.className = 'meta';
+        wrapPills.style.margin = '0';
+        for (const item of val.slice(0, 5)) {
+          wrapPills.append(pill(String(item)));
+        }
+        td.append(wrapPills);
+      } else {
+        td.textContent = val == null ? '' : String(val);
+      }
+      tr.append(td);
+    }
+    tbody.append(tr);
+  }
+  table.append(thead, tbody);
+  wrap.append(table);
+}
+
+async function runUnifiedKnowledgeSearch(queryText: string) {
+  const params = new URLSearchParams({
+    q: queryText,
+    scope: activeKbScope,
+    doc_mode: select('kb-doc-mode').value,
+    memory_strategy: select('kb-mem-strategy').value,
+    limit: '8',
+  });
+  const temp = input('kb-temporal').value.trim();
+  if (temp) params.set('temporal_bucket', temp);
+
+  const res = await request(`/knowledge/search?${params.toString()}`);
+
+  const metaEl = el('kb-search-meta');
+  metaEl.replaceChildren(
+    pill(`${res.total_hits} kết quả`, 'accent'),
+    pill(`${res.documents.length} tài liệu`),
+    pill(`${res.memories.length} ký ức`),
+    pill(`${res.matched_entities.length} thực thể`),
+    pill(`${res.latency_ms} ms`)
+  );
+
+  const entEl = el('kb-search-entities');
+  entEl.replaceChildren();
+  for (const ent of res.matched_entities) {
+    const p = pill(`${ent.name} (${ent.mentions})`, `type-${ent.type} clickable`);
+    p.onclick = () => {
+      input('kb-graph-entity').value = ent.name;
+      switchKbViz('graph');
+    };
+    entEl.append(p);
+  }
+
+  const out = el('kb-search-results');
+  out.replaceChildren();
+  const cols = document.createElement('div');
+  cols.className = 'search-columns';
+
+  // Documents bucket
+  const docBucket = document.createElement('div');
+  docBucket.className = 'search-bucket';
+  const docH = document.createElement('h3');
+  docH.textContent = `Tài liệu phù hợp (${res.documents.length})`;
+  docBucket.append(docH);
+  if (!res.documents.length) {
+    const p = document.createElement('p');
+    p.className = 'hint';
+    p.textContent = 'Không tìm thấy đoạn tài liệu khớp.';
+    docBucket.append(p);
+  }
+  for (const hit of res.documents) {
+    const card = document.createElement('div');
+    card.className = 'search-hit-card';
+    const text = document.createElement('p');
+    text.textContent = hit.chunk.text;
+    const m = document.createElement('div');
+    m.className = 'meta';
+    m.append(pill(hit.filename || hit.chunk.document_id.slice(0, 8), 'accent'));
+    for (const [k, v] of Object.entries(hit.score_breakdown || {})) {
+      m.append(pill(`${k}:${Number(v).toFixed(3)}`));
+    }
+    const a = document.createElement('a');
+    a.href = base() + hit.source_url;
+    a.textContent = `Tải nguồn gốc · blocks ${hit.chunk.block_ids.join(', ')}`;
+    card.append(text, m, a);
+    docBucket.append(card);
+  }
+
+  // Memories bucket
+  const memBucket = document.createElement('div');
+  memBucket.className = 'search-bucket';
+  const memH = document.createElement('h3');
+  memH.textContent = `Ký ức Agent phù hợp (${res.memories.length})`;
+  memBucket.append(memH);
+  if (!res.memories.length) {
+    const p = document.createElement('p');
+    p.className = 'hint';
+    p.textContent = 'Không tìm thấy ký ức khớp.';
+    memBucket.append(p);
+  }
+  for (const hit of res.memories) {
+    const card = document.createElement('div');
+    card.className = 'search-hit-card';
+    const text = document.createElement('p');
+    text.textContent = hit.record.content;
+    const m = document.createElement('div');
+    m.className = 'meta';
+    m.append(
+      pill(`${hit.strategy} · ${hit.score.toFixed(4)}`, 'accent'),
+      pill(`session:${hit.record.session_id}`),
+      pill(hit.record.timestamp.slice(0, 10))
+    );
+    for (const [k, v] of Object.entries(hit.score_breakdown || {})) {
+      m.append(pill(`${k}:${Number(v).toFixed(3)}`));
+    }
+    card.append(text, m);
+    memBucket.append(card);
+  }
+
+  cols.append(docBucket, memBucket);
+  out.append(cols);
+}
+
+async function refreshKnowledge() {
+  await refreshOverview();
+  if (activeKbViz === 'graph') await refreshKnowledgeGraph();
+  else await refreshKnowledgeTable();
+}
+
+// --- TAB 3: Memory Playground ---
 async function refreshMemory() {
   const [records, temporal, graph] = await Promise.all([
     request('/memory/records?limit=50'),
@@ -373,15 +964,17 @@ async function refreshMemory() {
     p.textContent = rec.summary || rec.content;
     const meta = document.createElement('div');
     meta.className = 'meta';
-    meta.append(pill(rec.strategy), pill(`session:${rec.session_id}`), pill(rec.timestamp.slice(0, 10)));
-    if (rec.entities?.length) meta.append(pill(`entities:${rec.entities.map((e: any) => e.name).slice(0, 3).join(', ')}`));
+    meta.append(pill(rec.strategy, 'accent'), pill(`session:${rec.session_id}`), pill(rec.timestamp.slice(0, 10)));
+    if (rec.entities?.length) {
+      meta.append(pill(`entities:${rec.entities.map((e: any) => e.name).slice(0, 3).join(', ')}`));
+    }
     const controls = document.createElement('div');
     controls.className = 'controls';
     controls.append(
       button('Delete', async () => {
         await request(`/memory/records/${rec.id}`, { method: 'DELETE' });
-        await refreshMemory();
-      }, 'danger')
+        await Promise.all([refreshMemory(), refreshOverview()]);
+      }, 'danger sm')
     );
     row.append(p, meta, controls);
     el('mem-records').append(row);
@@ -391,7 +984,7 @@ async function refreshMemory() {
   el('mem-graph').textContent = JSON.stringify(graph, null, 2);
 }
 
-// --- Phase 4: Experimentation & Comparison ---
+// --- TAB 4: Experimentation & Comparison ---
 async function refreshExperiments() {
   const [datasets, reports] = await Promise.all([
     request('/experiments/datasets'),
@@ -408,7 +1001,7 @@ async function refreshExperiments() {
     p.textContent = `${ds.name} (${ds.cases.length} cases)`;
     const meta = document.createElement('div');
     meta.className = 'meta';
-    meta.append(pill(`id:${ds.id}`), pill(`hash:${ds.dataset_hash.slice(0, 10)}`));
+    meta.append(pill(`id:${ds.id}`), pill(`hash:${ds.dataset_hash.slice(0, 10)}`, 'accent'));
     row.append(p, meta);
     el('exp-datasets').append(row);
 
@@ -423,17 +1016,18 @@ async function refreshExperiments() {
   for (const rep of reports) {
     const row = document.createElement('article');
     const label = document.createElement('label');
-    label.className = 'checkbox-label';
     const cb = document.createElement('input');
     cb.type = 'checkbox';
     cb.className = 'report-check';
     cb.value = rep.id;
     cb.checked = true;
-    label.append(cb, ` ${rep.name} [${rep.target}]`);
+    const title = document.createElement('strong');
+    title.textContent = `${rep.name} [${rep.target}]`;
+    label.append(cb, title);
     const meta = document.createElement('div');
     meta.className = 'meta';
     meta.append(
-      pill(`Recall@${rep.k}: ${rep.metrics.recall_at_k.toFixed(3)}`),
+      pill(`Recall@${rep.k}: ${rep.metrics.recall_at_k.toFixed(3)}`, 'accent'),
       pill(`MRR: ${rep.metrics.mrr.toFixed(3)}`),
       pill(`nDCG@${rep.k}: ${rep.metrics.ndcg_at_k.toFixed(3)}`),
       pill(`${rep.metrics.avg_latency_ms.toFixed(1)} ms`)
@@ -451,15 +1045,25 @@ function renderComparison(comparison: any) {
   info.textContent = `Baseline: ${comparison.baseline_id} · Dataset hash match: ${comparison.same_dataset_hash ? 'YES' : 'DIFFERS'}`;
   wrap.append(info);
 
+  const tableWrap = document.createElement('div');
+  tableWrap.className = 'table-wrap';
   const table = document.createElement('table');
-  table.innerHTML = `<thead><tr><th>Run</th><th>Target / Config</th><th>Dataset Hash</th><th>Recall@K</th><th>MRR</th><th>nDCG@K</th><th>Latency (ms)</th></tr></thead>`;
+  const thead = document.createElement('thead');
+  const htr = document.createElement('tr');
+  for (const label of ['Run', 'Target / Config', 'Dataset Hash', 'Recall@K', 'MRR', 'nDCG@K', 'Latency (ms)']) {
+    const th = document.createElement('th');
+    th.textContent = label;
+    htr.append(th);
+  }
+  thead.append(htr);
+
   const tbody = document.createElement('tbody');
   for (const row of comparison.reports) {
     const tr = document.createElement('tr');
     const cfg = row.target === 'documents'
       ? `docs · ${row.config_snapshot.search_mode}`
       : `memory · ${row.config_snapshot.resolved_memory_strategy}`;
-    const fmtDelta = (val: number) => (val === 0 ? '' : ` (${val > 0 ? '+' : ''}${val.toFixed(3)})`);
+
     const tdName = document.createElement('td');
     const strong = document.createElement('strong');
     strong.textContent = row.name;
@@ -469,36 +1073,109 @@ function renderComparison(comparison: any) {
     tdName.append(strong, br, small);
 
     const tdCfg = document.createElement('td');
-    tdCfg.textContent = cfg;
+    tdCfg.append(pill(cfg));
 
     const tdHash = document.createElement('td');
     const code = document.createElement('code');
     code.textContent = row.dataset_hash.slice(0, 10);
     tdHash.append(code);
 
-    const cells = [
-      `${row.metrics.recall_at_k.toFixed(3)}${fmtDelta(row.delta_vs_baseline.recall_at_k)}`,
-      `${row.metrics.mrr.toFixed(3)}${fmtDelta(row.delta_vs_baseline.mrr)}`,
-      `${row.metrics.ndcg_at_k.toFixed(3)}${fmtDelta(row.delta_vs_baseline.ndcg_at_k)}`,
-      row.metrics.avg_latency_ms.toFixed(2),
-    ];
     tr.append(tdName, tdCfg, tdHash);
-    for (const val of cells) {
+
+    for (const metric of ['recall_at_k', 'mrr', 'ndcg_at_k']) {
       const td = document.createElement('td');
-      td.textContent = val;
+      const val = Number(row.metrics[metric]).toFixed(3);
+      const delta = Number(row.delta_vs_baseline[metric]);
+      td.append(val);
+      if (delta !== 0) {
+        const span = document.createElement('span');
+        span.className = delta > 0 ? 'delta-pos' : 'delta-neg';
+        span.textContent = ` (${delta > 0 ? '+' : ''}${delta.toFixed(3)})`;
+        td.append(span);
+      }
       tr.append(td);
     }
+
+    const tdLat = document.createElement('td');
+    tdLat.textContent = row.metrics.avg_latency_ms.toFixed(2);
+    tr.append(tdLat);
     tbody.append(tr);
   }
-  table.append(tbody);
-  wrap.append(table);
+  table.append(thead, tbody);
+  tableWrap.append(table);
+  wrap.append(tableWrap);
 }
 
 async function refreshAll() {
-  await Promise.all([refreshDocuments(), refreshMemory(), refreshExperiments()]);
+  await Promise.all([refreshOverview(), refreshDocuments(), refreshMemory(), refreshExperiments()]);
 }
 
-// --- Event bindings ---
+// --- Event Bindings ---
+el('global-search-form').onsubmit = (event) => {
+  event.preventDefault();
+  const q = input('global-search-input').value.trim();
+  if (!q) return;
+  input('kb-query').value = q;
+  switchTab('knowledge');
+  action(() => runUnifiedKnowledgeSearch(q));
+};
+
+el('btn-open-graph').onclick = () => {
+  switchTab('knowledge');
+  switchKbViz('graph');
+};
+
+el('btn-open-table').onclick = () => {
+  switchTab('knowledge');
+  switchKbViz('table');
+};
+
+el('btn-refresh-all').onclick = () => action(refreshAll);
+
+// Knowledge Explorer controls
+for (const btn of document.querySelectorAll<HTMLButtonElement>('#kb-scope-control button')) {
+  btn.onclick = () => {
+    activeKbScope = btn.dataset.scope!;
+    document.querySelectorAll('#kb-scope-control button').forEach((b) => b.classList.toggle('active', b === btn));
+  };
+}
+
+for (const btn of document.querySelectorAll<HTMLButtonElement>('#kb-viz-switch button')) {
+  btn.onclick = () => switchKbViz(btn.dataset.viz as 'graph' | 'table');
+}
+
+for (const btn of document.querySelectorAll<HTMLButtonElement>('#kb-table-views button')) {
+  btn.onclick = () => {
+    activeKbTableView = btn.dataset.view!;
+    document.querySelectorAll('#kb-table-views button').forEach((b) => b.classList.toggle('active', b === btn));
+    action(refreshKnowledgeTable);
+  };
+}
+
+el('kb-source-filter').onchange = () => action(refreshKnowledge);
+el('kb-graph-cooccur').onchange = () => action(refreshKnowledgeGraph);
+el('btn-kb-graph-apply').onclick = () => action(refreshKnowledgeGraph);
+el('btn-kb-graph-clear').onclick = () => {
+  input('kb-graph-entity').value = '';
+  action(refreshKnowledgeGraph);
+};
+el('btn-zoom-in').onclick = () => graphEngine?.zoomBy(1.2);
+el('btn-zoom-out').onclick = () => graphEngine?.zoomBy(0.82);
+el('btn-zoom-reset').onclick = () => graphEngine?.resetView();
+
+el('kb-table-filter-form').onsubmit = (ev) => {
+  ev.preventDefault();
+  action(refreshKnowledgeTable);
+};
+
+el('kb-search-form').onsubmit = (ev) => {
+  ev.preventDefault();
+  const q = input('kb-query').value.trim();
+  if (!q) return;
+  action(() => runUnifiedKnowledgeSearch(q));
+};
+
+// Documents & Search
 el('upload').onsubmit = (event) => {
   event.preventDefault();
   action(async () => {
@@ -509,7 +1186,7 @@ el('upload').onsubmit = (event) => {
     const docId = input('upload-doc-id').value.trim();
     const qs = docId ? `?document_id=${encodeURIComponent(docId)}` : '';
     await request('/documents' + qs, { method: 'POST', body });
-    await refreshDocuments();
+    await Promise.all([refreshDocuments(), refreshOverview()]);
   });
 };
 
@@ -549,6 +1226,7 @@ el('search').onsubmit = (event) => {
   });
 };
 
+// Memory
 el('mem-store-form').onsubmit = (event) => {
   event.preventDefault();
   action(async () => {
@@ -565,7 +1243,7 @@ el('mem-store-form').onsubmit = (event) => {
       }),
     });
     (el('mem-content') as HTMLTextAreaElement).value = '';
-    await refreshMemory();
+    await Promise.all([refreshMemory(), refreshOverview()]);
   });
 };
 
@@ -594,7 +1272,7 @@ el('mem-search-form').onsubmit = (event) => {
       p.textContent = hit.record.content;
       const meta = document.createElement('div');
       meta.className = 'meta';
-      meta.append(pill(`${hit.strategy} · ${hit.score.toFixed(4)}`));
+      meta.append(pill(`${hit.strategy} · ${hit.score.toFixed(4)}`, 'accent'));
       for (const [k, v] of Object.entries(hit.score_breakdown || {})) {
         meta.append(pill(`${k}:${Number(v).toFixed(3)}`));
       }
@@ -607,6 +1285,7 @@ el('mem-search-form').onsubmit = (event) => {
 el('btn-refresh-mem').onclick = () => action(refreshMemory);
 el('btn-filter-graph').onclick = () => action(refreshMemory);
 
+// Experiments
 el('btn-ds-sample').onclick = () => {
   (el('exp-ds-cases') as HTMLTextAreaElement).value = JSON.stringify(
     [
@@ -631,7 +1310,7 @@ el('exp-dataset-form').onsubmit = (event) => {
         cases,
       }),
     });
-    await refreshExperiments();
+    await Promise.all([refreshExperiments(), refreshOverview()]);
   });
 };
 
@@ -653,7 +1332,7 @@ el('exp-run-form').onsubmit = (event) => {
         pipeline_run_id: input('exp-run-run-filter').value.trim() || null,
       }),
     });
-    await refreshExperiments();
+    await Promise.all([refreshExperiments(), refreshOverview()]);
   });
 };
 
@@ -669,52 +1348,5 @@ el('btn-compare').onclick = () => {
 el('api').onchange = () => action(refreshAll);
 action(refreshAll);
 </script>
-
-<style is:global>
-  * { box-sizing: border-box; }
-  body { margin: 0; background: #0d1416; color: #e2ebe6; font: 15px/1.55 system-ui, -apple-system, sans-serif; }
-  main { max-width: 1180px; margin: auto; padding: 28px 20px 48px; }
-  .topbar { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
-  h1 { font-size: 38px; margin: 4px 0; letter-spacing: -0.5px; }
-  h2 { font-size: 19px; margin: 0 0 12px; color: #c7f2d8; }
-  h3 { font-size: 15px; margin: 0 0 8px; color: #9ec9b0; }
-  small { color: #8ad6ab; letter-spacing: 1.8px; font-weight: 600; }
-  .subtitle, .hint { color: #9db2a8; margin: 4px 0 12px; font-size: 14px; }
-  .api-box { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #9db2a8; }
-  .tabs { display: flex; gap: 8px; flex-wrap: wrap; border-bottom: 1px solid #263630; padding-bottom: 12px; margin-bottom: 20px; }
-  .tab { background: #16221e; color: #b7cfc2; border: 1px solid #2d423a; padding: 9px 15px; }
-  .tab.active { background: #a8e9c2; color: #0d2116; border-color: #a8e9c2; font-weight: 600; }
-  .tab-panel { display: none; }
-  .tab-panel.active { display: block; }
-  .card { background: #131d1f; border: 1px solid #24342f; border-radius: 10px; padding: 18px; margin-bottom: 18px; }
-  .section-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
-  .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 18px; }
-  .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
-  .row-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
-  .stack-form { display: flex; flex-direction: column; gap: 8px; }
-  .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-  .checkbox-label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
-  input, select, textarea, button { font: inherit; padding: 8px 11px; border-radius: 6px; border: 1px solid #354b43; background: #192623; color: #e2ebe6; }
-  textarea { resize: vertical; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 13px; }
-  button { cursor: pointer; background: #a8e9c2; color: #0e2217; border-color: #a8e9c2; font-weight: 500; }
-  button.secondary { background: #1e2f2a; color: #d5ece0; border-color: #3d574d; }
-  button.danger { background: #3b1f22; color: #f7b8bf; border-color: #6b353c; }
-  #query { flex: 1; min-width: 180px; }
-  article { padding: 12px 0; border-bottom: 1px solid #22302b; }
-  article:last-child { border-bottom: none; }
-  article p { margin: 0 0 6px; }
-  .meta { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 8px; }
-  .pill { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12px; background: #1d2f29; color: #a7dfc0; border: 1px solid #2f4a40; }
-  a { color: #8be6b4; text-decoration: underline; text-underline-offset: 3px; }
-  pre { overflow: auto; max-height: 360px; background: #09100e; border: 1px solid #1e2d28; border-radius: 8px; padding: 14px; font-size: 12.5px; white-space: pre-wrap; margin: 10px 0 0; }
-  .compact-pre { max-height: 300px; }
-  .table-wrap { overflow-x: auto; margin-top: 14px; }
-  table { width: 100%; border-collapse: collapse; font-size: 13.5px; background: #0f181a; border: 1px solid #24342f; border-radius: 8px; overflow: hidden; }
-  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #24342f; }
-  th { color: #9eddb9; background: #162421; font-weight: 600; }
-  tr:last-child td { border-bottom: none; }
-  code { font-family: ui-monospace, SFMono-Regular, monospace; font-size: 12.5px; color: #b7f0cf; }
-  #status { background: #1d3228; border: 1px solid #355848; border-radius: 8px; padding: 10px 14px; margin-top: 12px; color: #c7f2d8; font-weight: 500; }
-</style>
 </body>
 </html>
