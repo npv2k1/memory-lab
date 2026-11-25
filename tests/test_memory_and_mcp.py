@@ -158,6 +158,10 @@ def test_mcp_jsonrpc_lifecycle(tmp_path):
         init = api.post("/mcp", json={"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}}).json()
         assert init["result"]["serverInfo"]["name"] == "memory-lab"
 
+        notified = api.post("/mcp", json={"jsonrpc": "2.0", "method": "notifications/initialized"})
+        assert notified.status_code == 202
+        assert notified.content == b""
+
         tools = api.post("/mcp", json={"jsonrpc": "2.0", "id": 2, "method": "tools/list"}).json()
         tool_names = {t["name"] for t in tools["result"]["tools"]}
         assert tool_names == {"memory_store", "memory_search", "memory_get", "memory_delete"}
