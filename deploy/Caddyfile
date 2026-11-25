@@ -1,0 +1,7 @@
+{$DOMAIN} {
+    encode gzip zstd
+    reverse_proxy web:4321 {
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}

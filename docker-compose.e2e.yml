@@ -32,6 +32,11 @@ services:
       target: base
     volumes: ["./tests/e2e/support:/support:ro"]
     command: [python, /support/embeddings.py]
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/health', timeout=3)"]
+      interval: 3s
+      timeout: 5s
+      retries: 15
 volumes:
   artifacts:
   qdrant:

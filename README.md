@@ -1,8 +1,30 @@
 # Memory Lab
 
-Nền tảng R&D xử lý tài liệu, bộ nhớ dài hạn cho agent và đánh giá truy xuất (đã triển khai đầy đủ Phase 1–4).
+[![CI and images](https://github.com/npv2k1/memory-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/npv2k1/memory-lab/actions/workflows/ci.yml)
 
-## Khởi chạy
+Nền tảng R&D xử lý tài liệu, trực quan hóa kho tri thức (Embedding Atlas, đồ thị, bảng), bộ nhớ dài hạn cho agent và đánh giá truy xuất (đã triển khai đầy đủ Phase 1–4).
+
+## Chạy Production ngay lập tức (Docker Compose + GHCR)
+
+Không cần build code — kéo thẳng image public từ GitHub Container Registry và chạy:
+
+```bash
+# 1. (Tùy chọn) Tạo cấu hình môi trường nếu muốn cấu hình Embedding API / Neo4j / Domain TLS
+cp .env.prod.example .env.prod
+
+# 2. Khởi chạy ngay stack production (Web Nginx :4321 + FastAPI/Docling + Qdrant)
+docker compose -f docker-compose.prod.yml up -d --wait
+
+# Tùy chọn bật thêm Neo4j Graph Store:
+# docker compose -f docker-compose.prod.yml --profile graph up -d --wait
+
+# Tùy chọn bật thêm HTTPS tự động với Caddy (điền DOMAIN=... trong .env.prod):
+# docker compose -f docker-compose.prod.yml --profile tls up -d --wait
+```
+
+Mở giao diện SaaS tại **http://localhost:4321** · API docs tại `/api/docs`.
+
+## Khởi chạy Local Build / Development
 
 Yêu cầu Docker Compose, hoặc Python 3.12+ (`uv`) và Bun `1.4.4`. Embedding endpoint phải hỗ trợ OpenAI `/v1/embeddings` (các chiến lược `sparse`, `zero_token` và `graph` chạy được không cần embedding server).
 
@@ -132,7 +154,7 @@ Hướng dẫn tích hợp vào LLM & AI Agent (MCP, REST API, Tool Calling, Pyt
 
 So sánh trực tiếp 4 chiến lược của Memory Lab (`ZeroToken`, `Graph`, `Vector`, `Hybrid`) với `Naive-Recency`, `RankBM25`, `FAISS-FlatIP`, `ChromaDB` và tùy chọn `Mem0-OSS` bằng notebook [`notebooks/memory_benchmark_colab.ipynb`](notebooks/memory_benchmark_colab.ipynb):
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/npv2k1/memory-lab/blob/feat/complete-memory-lab/notebooks/memory_benchmark_colab.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/npv2k1/memory-lab/blob/main/notebooks/memory_benchmark_colab.ipynb)
 
 ## Docker, CI/CD và E2E
 
