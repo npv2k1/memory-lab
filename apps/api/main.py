@@ -10,14 +10,24 @@ from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Str
 from pydantic import BaseModel, Field
 from memory_lab.core.config import Settings
 from memory_lab.core.models import (
+    AgentMessageCancelRequest,
+    AgentMessagePopRequest,
+    AgentMessageSendRequest,
     BenchmarkDatasetCreate,
     ExperimentRunRequest,
+    ForgetSweepRequest,
+    HandoffAcceptRequest,
+    HandoffCreateRequest,
+    MemoryFeedbackRequest,
     MemorySearchRequest,
     MemoryStoreRequest,
     MemoryStrategyName,
     PipelineConfig,
     SearchMode,
     StageInvalidationRequest,
+    WikiPagePatchRequest,
+    WikiPageRestoreRequest,
+    WikiPageWriteRequest,
 )
 from memory_lab.documents.ingestion.service import IngestionService
 from memory_lab.documents.pipeline.service import DocumentPipeline
@@ -36,7 +46,7 @@ from memory_lab.enterprise.tenant_registry import TenantContextRegistry, TenantS
 from memory_lab.experiments.service import ExperimentService
 from memory_lab.knowledge.atlas import AtlasSourceFilter, EmbeddingAtlasService
 from memory_lab.knowledge.service import KnowledgeService, KnowledgeSourceFilter, TableViewName
-from memory_lab.mcp.server import MCPServer
+from memory_lab.mcp.server import MCPServer, MUTATING_MCP_TOOLS
 from memory_lab.memory.service import MemoryService
 from memory_lab.retrieval.embedding import OpenAIEmbeddings
 from memory_lab.storage.filesystem.store import FileStore
@@ -148,7 +158,7 @@ def create_app(
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
-        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["*"],
     )
 
@@ -192,7 +202,7 @@ def create_app(
             response.headers[hk] = hv
 
         ctx: AuthContext | None = getattr(request.state, "auth_ctx", None)
-        if ctx is not None and request.method in {"POST", "PUT", "DELETE"} and request.url.path not in {"/auth/token"}:
+        if ctx is not None and request.method in {"POST", "PUT", "PATCH", "DELETE"} and request.url.path not in {"/auth/token"}:
             try:
                 ent_store.record_audit(
                     tenant_id=ctx.tenant_id,
@@ -535,7 +545,7 @@ def create_app(
             dedupe=dedupe,
         )
 
-    # --- Phase 2 & 3: Agent Memory Foundation, Graph, Temporal Hierarchy & Advanced Strategies ---
+    # --- Phase 2, 3 & ai-memory Integration: Agent Memory, Aging, Handoffs, Messaging & Durable Wiki ---
 
     @app.post("/memory/store", status_code=201)
     def memory_store(request: Request, payload: MemoryStoreRequest):
@@ -546,6 +556,11 @@ def create_app(
         return svc.memory.store_memory(
             content=payload.content,
             session_id=payload.session_id,
+            project=payload.project,
+            tier=payload.tier,
+            pinned=payload.pinned,
+            expires_at=payload.expires_at,
+            scrub_secrets_enabled=payload.scrub_secrets,
             role=payload.role,
             strategy=payload.strategy,
             timestamp=payload.timestamp,
@@ -562,6 +577,7 @@ def create_app(
             strategy=payload.strategy,
             limit=payload.limit,
             session_id=payload.session_id,
+            project=payload.project,
             temporal_bucket=payload.temporal_bucket,
         )
 
@@ -572,6 +588,7 @@ def create_app(
         strategy: MemoryStrategyName | None = Query(None),
         limit: int = Query(5, ge=1, le=50),
         session_id: str | None = Query(None),
+        project: str | None = Query(None),
         temporal_bucket: str | None = Query(None),
     ):
         _ctx, svc = resolve(request, "viewer")
@@ -580,6 +597,7 @@ def create_app(
             strategy=strategy,
             limit=limit,
             session_id=session_id,
+            project=project,
             temporal_bucket=temporal_bucket,
         )
 
@@ -587,11 +605,19 @@ def create_app(
     def memory_records(
         request: Request,
         session_id: str | None = Query(None),
+        project: str | None = Query(None),
         temporal_bucket: str | None = Query(None),
+        include_archived: bool = Query(False),
         limit: int = Query(100, ge=1, le=500),
     ):
         _ctx, svc = resolve(request, "viewer")
-        return svc.memory.list_records(session_id=session_id, temporal_bucket=temporal_bucket, limit=limit)
+        return svc.memory.list_records(
+            session_id=session_id,
+            project=project,
+            temporal_bucket=temporal_bucket,
+            include_archived=include_archived,
+            limit=limit,
+        )
 
     @app.get("/memory/records/{memory_id}")
     def memory_get(request: Request, memory_id: str):
@@ -605,6 +631,153 @@ def create_app(
         if not deleted:
             raise HTTPException(404, "Memory record not found")
         return {"memory_id": memory_id, "deleted": True}
+
+    @app.post("/memory/records/{memory_id}/feedback")
+    def memory_feedback(request: Request, memory_id: str, payload: MemoryFeedbackRequest):
+        _ctx, svc = resolve(request, "editor")
+        return svc.memory.submit_feedback(memory_id, payload.signal, reason=payload.reason)
+
+    @app.post("/memory/records/{memory_id}/restore")
+    def memory_restore(request: Request, memory_id: str):
+        _ctx, svc = resolve(request, "editor")
+        return svc.memory.restore_memory(memory_id)
+
+    @app.post("/memory/forget-sweep")
+    def memory_forget_sweep(request: Request, payload: ForgetSweepRequest):
+        _ctx, svc = resolve(request, "editor")
+        return svc.memory.forget_sweep(
+            dry_run=payload.dry_run,
+            project=payload.project,
+            cold_threshold=payload.cold_threshold,
+            lambda_decay=payload.lambda_decay,
+        )
+
+    @app.get("/memory/lint")
+    def memory_lint(request: Request, project: str | None = Query(None)):
+        _ctx, svc = resolve(request, "viewer")
+        return svc.memory.lint(project=project)
+
+    @app.get("/memory/briefing")
+    def memory_briefing(
+        request: Request,
+        project: str = Query("default"),
+        session_id: str | None = Query(None),
+        recent_limit: int = Query(8, ge=1, le=30),
+        settled_first: bool = Query(True),
+    ):
+        _ctx, svc = resolve(request, "viewer")
+        return svc.memory.briefing(
+            project=project,
+            session_id=session_id,
+            recent_limit=recent_limit,
+            settled_first=settled_first,
+        )
+
+    # --- Cross-Agent Claim-Once Handoffs ---
+
+    @app.post("/memory/handoffs", status_code=201)
+    def handoff_begin(request: Request, payload: HandoffCreateRequest):
+        _ctx, svc = resolve(request, "editor")
+        return svc.memory.begin_handoff(payload)
+
+    @app.get("/memory/handoffs")
+    def handoff_list(
+        request: Request,
+        project: str | None = Query(None),
+        status: str = Query("pending"),
+        limit: int = Query(20, ge=1, le=100),
+    ):
+        _ctx, svc = resolve(request, "viewer")
+        return svc.memory.list_handoffs(project=project, status=status, limit=limit)
+
+    @app.post("/memory/handoffs/accept")
+    def handoff_accept(request: Request, payload: HandoffAcceptRequest):
+        _ctx, svc = resolve(request, "editor")
+        return svc.memory.accept_handoff(payload)
+
+    @app.post("/memory/handoffs/{handoff_id}/cancel")
+    def handoff_cancel(request: Request, handoff_id: str):
+        _ctx, svc = resolve(request, "editor")
+        return svc.memory.cancel_handoff(handoff_id)
+
+    # --- Directed Cross-Project Agent Inbox / Messaging ---
+
+    @app.post("/memory/messages", status_code=201)
+    def message_send(request: Request, payload: AgentMessageSendRequest):
+        _ctx, svc = resolve(request, "editor")
+        return svc.memory.send_message(payload)
+
+    @app.get("/memory/messages")
+    def message_list(
+        request: Request,
+        project: str = Query("default"),
+        box: str = Query("inbox"),
+        status: str = Query("pending"),
+        agent: str | None = Query(None),
+        limit: int = Query(50, ge=1, le=200),
+    ):
+        _ctx, svc = resolve(request, "viewer")
+        return svc.memory.list_messages(project=project, box=box, status=status, agent=agent, limit=limit)
+
+    @app.post("/memory/messages/pop")
+    def message_pop(request: Request, payload: AgentMessagePopRequest):
+        _ctx, svc = resolve(request, "editor")
+        msg = svc.memory.pop_message(payload)
+        if msg is None:
+            return {"claimed": False, "message": None}
+        return {"claimed": True, "message": msg}
+
+    @app.post("/memory/messages/cancel")
+    def message_cancel(request: Request, payload: AgentMessageCancelRequest):
+        _ctx, svc = resolve(request, "editor")
+        return svc.memory.cancel_message(payload)
+
+    # --- Durable Markdown Wiki Pages (Versioned, Wikilinked, Reversible) ---
+
+    @app.put("/memory/pages")
+    def wiki_write_page(request: Request, payload: WikiPageWriteRequest):
+        _ctx, svc = resolve(request, "editor")
+        return svc.memory.write_wiki_page(payload)
+
+    @app.patch("/memory/pages")
+    def wiki_patch_page(request: Request, payload: WikiPagePatchRequest):
+        _ctx, svc = resolve(request, "editor")
+        return svc.memory.patch_wiki_page(payload)
+
+    @app.get("/memory/pages")
+    def wiki_list_pages(
+        request: Request,
+        project: str | None = Query(None),
+        kind: str | None = Query(None),
+        q: str | None = Query(None),
+        include_deleted: bool = Query(False),
+        limit: int = Query(100, ge=1, le=500),
+    ):
+        _ctx, svc = resolve(request, "viewer")
+        if q:
+            return svc.memory.search_wiki_pages(q, project=project, limit=limit)
+        return svc.memory.list_wiki_pages(
+            project=project, kind=kind, include_deleted=include_deleted, limit=limit
+        )
+
+    @app.get("/memory/pages/read")
+    def wiki_read_page(
+        request: Request,
+        path: str = Query(min_length=1, max_length=256),
+        include_related: bool = Query(True),
+    ):
+        _ctx, svc = resolve(request, "viewer")
+        return svc.memory.read_wiki_page(path, include_related=include_related)
+
+    @app.delete("/memory/pages")
+    def wiki_delete_page(request: Request, path: str = Query(min_length=1, max_length=256)):
+        _ctx, svc = resolve(request, "editor")
+        return svc.memory.delete_wiki_page(path)
+
+    @app.post("/memory/pages/restore")
+    def wiki_restore_page(request: Request, payload: WikiPageRestoreRequest):
+        _ctx, svc = resolve(request, "editor")
+        return svc.memory.restore_wiki_page(payload.path, version=payload.version)
 
     @app.get("/memory/traces")
     def memory_traces(
@@ -631,7 +804,7 @@ def create_app(
     def mcp_endpoint(request: Request, payload: dict[str, Any]):
         method = payload.get("method")
         tool_name = (payload.get("params") or {}).get("name") if method == "tools/call" else None
-        required: Role = "editor" if tool_name in {"memory_store", "memory_delete"} else "viewer"
+        required: Role = "editor" if tool_name in MUTATING_MCP_TOOLS else "viewer"
         _ctx, svc = resolve(request, required)
         response = svc.mcp.handle_message(payload)
         if response is None:

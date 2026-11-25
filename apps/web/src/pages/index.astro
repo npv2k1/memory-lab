@@ -50,6 +50,12 @@ import '../styles/app.css';
           <span class="nav-count" id="nav-count-mem">0</span>
         </button>
 
+        <button type="button" class="tab" data-tab="agents" role="tab" aria-selected="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          <span>Agent Hub &amp; Wiki</span>
+          <span class="nav-count" id="nav-count-agents">0</span>
+        </button>
+
         <button type="button" class="tab" data-tab="experiments" role="tab" aria-selected="false">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
           <span>Experiments &amp; Eval</span>
@@ -371,6 +377,16 @@ import '../styles/app.css';
                     <option value="tool">tool</option>
                   </select>
                 </label>
+                <label>Tier
+                  <select id="mem-tier">
+                    <option value="episodic">episodic</option>
+                    <option value="working">working</option>
+                    <option value="semantic">semantic</option>
+                    <option value="procedural">procedural</option>
+                  </select>
+                </label>
+                <label>Project <input id="mem-project" value="default" style="width:104px"/></label>
+                <label><input id="mem-pinned" type="checkbox"/> Pin</label>
                 <label>Tags <input id="mem-tags" placeholder="rag, architecture"/></label>
               </div>
               <button type="submit">Store memory</button>
@@ -405,13 +421,17 @@ import '../styles/app.css';
 
         <section class="card">
           <div class="card-head">
-            <h2>Memory Records, Temporal Hierarchy &amp; Knowledge Graph</h2>
+            <h2>Memory Records, Aging/Hygiene, Temporal Hierarchy &amp; Knowledge Graph</h2>
             <div class="controls">
-              <button type="button" class="secondary" id="btn-refresh-mem">Làm mới</button>
+              <button type="button" class="secondary sm" id="btn-refresh-mem">Làm mới</button>
+              <button type="button" class="secondary sm" id="btn-mem-lint">Lint (Duplicates &amp; Contradictions)</button>
+              <button type="button" class="secondary sm" id="btn-mem-sweep-dry">Forget Sweep (Dry-run)</button>
+              <button type="button" class="danger sm" id="btn-mem-sweep-run">Forget Sweep (Archive)</button>
               <input id="graph-entity-filter" placeholder="Lọc entity trong Graph…" />
-              <button type="button" class="secondary" id="btn-filter-graph">Xem Graph</button>
+              <button type="button" class="secondary sm" id="btn-filter-graph">Xem Graph</button>
             </div>
           </div>
+          <pre id="mem-hygiene-output" class="compact-pre" style="display:none; margin-bottom:12px"></pre>
           <div class="grid-3">
             <div>
               <h3>Records (<span id="mem-record-count">0</span>)</h3>
@@ -552,6 +572,105 @@ import '../styles/app.css';
           <div id="emb-test-result" style="display:none"></div>
         </section>
       </div>
+
+      <!-- TAB 6: AGENT HUB & DURABLE WIKI (ai-memory integration: Briefing, Handoffs, Inbox, Markdown Wiki) -->
+      <div id="tab-agents" class="tab-panel">
+        <section class="card">
+          <div class="card-head">
+            <h2>1. Agent Startup Briefing</h2>
+            <div class="controls">
+              <label>Project <input id="hub-project" value="default" style="width:130px"/></label>
+              <button type="button" class="sm" id="btn-hub-briefing">Generate Briefing</button>
+              <button type="button" class="secondary sm" id="btn-hub-refresh">Làm mới Hub</button>
+            </div>
+          </div>
+          <div id="hub-briefing-meta" class="meta"></div>
+          <pre id="hub-briefing-md" class="compact-pre">Bấm "Generate Briefing" để tổng hợp ngữ cảnh khởi động (durable wiki, handoffs đang chờ, inbox chưa đọc, cảnh báo mâu thuẫn).</pre>
+        </section>
+
+        <div class="grid-2">
+          <section class="card">
+            <div class="card-head">
+              <h2>2. Cross-Agent Handoffs (Claim-Once)</h2>
+              <span class="pill accent">Zero-LLM Continuity</span>
+            </div>
+            <form id="handoff-form" class="stack-form">
+              <textarea id="hf-summary" rows="3" placeholder="Tóm tắt trạng thái phiên làm việc cho agent tiếp theo…" required></textarea>
+              <div class="controls">
+                <label>From Agent <input id="hf-from-agent" value="claude-code" style="width:120px"/></label>
+                <label>Next steps <input id="hf-next-steps" placeholder="Bước 1; Bước 2"/></label>
+                <label>Files <input id="hf-files" placeholder="apps/api/main.py, README.md"/></label>
+              </div>
+              <button type="submit">Create Handoff</button>
+            </form>
+            <div id="handoff-list" style="margin-top:12px"></div>
+          </section>
+
+          <section class="card">
+            <div class="card-head">
+              <h2>3. Directed Agent Inbox (Claim-Once)</h2>
+              <button type="button" class="secondary sm" id="btn-msg-pop">Pop Next Mail</button>
+            </div>
+            <form id="msg-form" class="stack-form">
+              <div class="controls">
+                <label>To Project <input id="msg-to-project" value="default" style="width:110px" required/></label>
+                <label>To Agent <input id="msg-to-agent" placeholder="(shared)" style="width:100px"/></label>
+                <label>Nature
+                  <select id="msg-nature">
+                    <option value="unknown">unknown</option>
+                    <option value="measured">measured</option>
+                    <option value="reported">reported</option>
+                    <option value="inferred">inferred</option>
+                  </select>
+                </label>
+              </div>
+              <input id="msg-subject" placeholder="Tiêu đề ngắn (tùy chọn)"/>
+              <textarea id="msg-body" rows="2" placeholder="Nội dung yêu cầu tự đủ cho agent đích…" required></textarea>
+              <input id="msg-evidence" placeholder="Bằng chứng (bắt buộc nếu nature = measured)"/>
+              <button type="submit">Send Message</button>
+            </form>
+            <div id="msg-inbox-list" style="margin-top:12px"></div>
+          </section>
+        </div>
+
+        <section class="card">
+          <div class="card-head">
+            <h2>4. Durable Markdown Wiki Pages (Versioned · Wikilinked · Reversible)</h2>
+            <div class="controls">
+              <input id="wiki-search" placeholder="Tìm wiki pages…" style="width:190px"/>
+              <button type="button" class="secondary sm" id="btn-wiki-search">Tìm Wiki</button>
+            </div>
+          </div>
+          <div class="grid-2">
+            <form id="wiki-form" class="stack-form">
+              <div class="controls">
+                <label>Path <input id="wiki-path" placeholder="decisions/embedding-choice.md" style="width:210px" required/></label>
+                <label>Kind
+                  <select id="wiki-kind">
+                    <option value="decision">decision</option>
+                    <option value="rule">rule</option>
+                    <option value="procedure">procedure</option>
+                    <option value="gotcha">gotcha</option>
+                    <option value="concept">concept</option>
+                    <option value="note">note</option>
+                  </select>
+                </label>
+                <label><input id="wiki-pinned" type="checkbox"/> Pin</label>
+              </div>
+              <input id="wiki-title" placeholder="Tiêu đề trang tri thức" required/>
+              <input id="wiki-tags" placeholder="Tags (vd: rag, ollama, production)"/>
+              <textarea id="wiki-content" rows="5" placeholder="Viết Markdown — hỗ trợ [[wikilinks]] tới trang khác, ví dụ [[concepts/retrieval.md]]" required></textarea>
+              <button type="submit">Save Wiki Page</button>
+            </form>
+            <div>
+              <h3>Pages (<span id="wiki-count">0</span>)</h3>
+              <div id="wiki-pages-list"></div>
+              <h3 style="margin-top:12px">Markdown &amp; Version Inspector</h3>
+              <pre id="wiki-viewer" class="compact-pre">Chọn một trang wiki để đọc Markdown, backlinks và lịch sử phiên bản.</pre>
+            </div>
+          </div>
+        </section>
+      </div>
     </main>
   </div>
 </div>
@@ -585,7 +704,11 @@ const TAB_META: Record<string, { title: string; subtitle: string }> = {
   },
   memory: {
     title: 'Agent Memory Playground',
-    subtitle: 'Lưu trữ interaction traces, kiểm thử Vector / Graph / ZeroToken / Hybrid và phân cấp thời gian.',
+    subtitle: 'Lưu trữ interaction traces, memory aging/reinforcement, feedback salience và kiểm thử 4 chiến lược truy xuất.',
+  },
+  agents: {
+    title: 'Agent Hub & Durable Markdown Wiki',
+    subtitle: 'Tích hợp ai-memory: Session Briefing, Cross-Agent Claim-Once Handoffs, Directed Inbox và Markdown Wiki có versioning.',
   },
   experiments: {
     title: 'Experimentation & Benchmark Evaluation',
@@ -681,6 +804,8 @@ function switchTab(target: string) {
     action(refreshKnowledge);
   } else if (target === 'settings') {
     action(refreshEmbeddingSettings);
+  } else if (target === 'agents') {
+    action(refreshAgentHub);
   }
 }
 
@@ -1553,13 +1678,37 @@ async function refreshMemory() {
     p.textContent = rec.summary || rec.content;
     const meta = document.createElement('div');
     meta.className = 'meta';
-    meta.append(pill(rec.strategy, 'accent'), pill(`session:${rec.session_id}`), pill(rec.timestamp.slice(0, 10)));
+    meta.append(
+      pill(rec.strategy, 'accent'),
+      pill(`tier:${rec.tier || 'episodic'}`),
+      pill(`salience:${Number(rec.salience ?? 1).toFixed(2)}`),
+      pill(`hits:${rec.access_count ?? 0}`),
+      pill(`session:${rec.session_id}`),
+      pill(rec.timestamp.slice(0, 10))
+    );
+    if (rec.pinned) meta.append(pill('pinned', 'accent'));
     if (rec.entities?.length) {
       meta.append(pill(`entities:${rec.entities.map((e: any) => e.name).slice(0, 3).join(', ')}`));
     }
     const controls = document.createElement('div');
     controls.className = 'controls';
     controls.append(
+      button('Helpful', async () => {
+        await request(`/memory/records/${rec.id}/feedback`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ signal: 'helpful' }),
+        });
+        await refreshMemory();
+      }, 'secondary sm'),
+      button('Stale', async () => {
+        await request(`/memory/records/${rec.id}/feedback`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ signal: 'stale' }),
+        });
+        await refreshMemory();
+      }, 'secondary sm'),
       button('Delete', async () => {
         await request(`/memory/records/${rec.id}`, { method: 'DELETE' });
         await Promise.all([refreshMemory(), refreshOverview()]);
@@ -1814,6 +1963,252 @@ el('emb-settings-form').onsubmit = (event) => {
   });
 };
 
+// --- TAB 6: Agent Hub & Durable Markdown Wiki (ai-memory integration) ---
+function hubProject() {
+  return input('hub-project')?.value.trim() || 'default';
+}
+
+async function generateBriefing() {
+  const proj = hubProject();
+  const data = await request(`/memory/briefing?project=${encodeURIComponent(proj)}`);
+  el('hub-briefing-meta').replaceChildren(
+    pill(`project: ${data.project}`, 'accent'),
+    pill(`durable: ${data.durable_memories.length}`),
+    pill(`wiki: ${data.wiki_pages.length}`),
+    pill(`handoffs: ${data.pending_handoffs.length}`),
+    pill(`unread mail: ${data.unread_messages_count}`),
+    pill(`lint issues: ${data.lint_summary.issue_count}`)
+  );
+  el('hub-briefing-md').textContent = data.rendered_markdown;
+}
+
+async function refreshAgentHub() {
+  const proj = hubProject();
+  const [handoffs, inbox, pages] = await Promise.all([
+    request(`/memory/handoffs?project=${encodeURIComponent(proj)}&status=all&limit=20`),
+    request(`/memory/messages?project=${encodeURIComponent(proj)}&box=inbox&status=all&limit=30`),
+    request(`/memory/pages?project=${encodeURIComponent(proj)}&include_deleted=true&limit=50`),
+  ]);
+
+  const pendingCount =
+    handoffs.filter((h: any) => h.status === 'pending').length +
+    inbox.filter((m: any) => m.status === 'pending').length;
+  el('nav-count-agents').textContent = String(pendingCount);
+
+  // Render Handoffs
+  const hfWrap = el('handoff-list');
+  hfWrap.replaceChildren();
+  if (!handoffs.length) {
+    const empty = document.createElement('div');
+    empty.className = 'empty-state';
+    empty.textContent = 'Chưa có handoff nào cho project này.';
+    hfWrap.append(empty);
+  }
+  for (const h of handoffs) {
+    const row = document.createElement('article');
+    const p = document.createElement('p');
+    p.textContent = h.summary;
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    meta.append(
+      pill(h.status, h.status === 'pending' ? 'accent' : ''),
+      pill(`from:${h.from_agent}`),
+      pill(`id:${h.id}`)
+    );
+    if (h.accepted_by) meta.append(pill(`accepted_by:${h.accepted_by}`));
+    row.append(p, meta);
+    if (h.status === 'pending') {
+      const controls = document.createElement('div');
+      controls.className = 'controls';
+      controls.append(
+        button('Accept (Claim)', async () => {
+          await request('/memory/handoffs/accept', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ handoff_id: h.id, project: proj, agent: 'ui-operator' }),
+          });
+          await refreshAgentHub();
+        }, 'sm'),
+        button('Cancel', async () => {
+          await request(`/memory/handoffs/${h.id}/cancel`, { method: 'POST' });
+          await refreshAgentHub();
+        }, 'danger sm')
+      );
+      row.append(controls);
+    }
+    hfWrap.append(row);
+  }
+
+  // Render Directed Inbox
+  const msgWrap = el('msg-inbox-list');
+  msgWrap.replaceChildren();
+  if (!inbox.length) {
+    const empty = document.createElement('div');
+    empty.className = 'empty-state';
+    empty.textContent = 'Hộp thư đến trống.';
+    msgWrap.append(empty);
+  }
+  for (const m of inbox) {
+    const row = document.createElement('article');
+    const p = document.createElement('p');
+    p.textContent = m.subject ? `${m.subject} — ${m.body}` : m.body;
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    meta.append(
+      pill(m.status, m.status === 'pending' ? 'accent' : ''),
+      pill(`from:${m.from_project}/${m.from_agent}`),
+      pill(`nature:${m.nature}`)
+    );
+    if (m.to_agent) meta.append(pill(`to:${m.to_agent}`));
+    if (m.evidence) meta.append(pill(`evidence:${m.evidence.slice(0, 40)}`));
+    row.append(p, meta);
+    msgWrap.append(row);
+  }
+
+  // Render Durable Markdown Wiki Pages
+  el('wiki-count').textContent = String(pages.length);
+  const wikiWrap = el('wiki-pages-list');
+  wikiWrap.replaceChildren();
+  if (!pages.length) {
+    const empty = document.createElement('div');
+    empty.className = 'empty-state';
+    empty.textContent = 'Chưa có trang wiki nào. Tạo trang đầu tiên ở form bên trái.';
+    wikiWrap.append(empty);
+  }
+  for (const pg of pages) {
+    const row = document.createElement('article');
+    const p = document.createElement('p');
+    const strong = document.createElement('strong');
+    strong.textContent = `${pg.path} — ${pg.title}`;
+    p.append(strong);
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    meta.append(pill(pg.kind, 'accent'), pill(`v${pg.version}`), pill(`hits:${pg.access_count ?? 0}`));
+    if (pg.pinned) meta.append(pill('pinned', 'accent'));
+    if (pg.deleted) meta.append(pill('deleted'));
+    const controls = document.createElement('div');
+    controls.className = 'controls';
+    if (!pg.deleted) {
+      controls.append(
+        button('Read', async () => {
+          const detail = await request(`/memory/pages/read?path=${encodeURIComponent(pg.path)}`);
+          const relList = (detail.related || []).map((r: any) => r.path).join(', ') || 'none';
+          el('wiki-viewer').textContent = `${detail.markdown}\n--- Versions: v${(detail.versions || []).join(', v')} | Related: ${relList}`;
+          await refreshAgentHub();
+        }, 'secondary sm'),
+        button('Delete', async () => {
+          await request(`/memory/pages?path=${encodeURIComponent(pg.path)}`, { method: 'DELETE' });
+          await refreshAgentHub();
+        }, 'danger sm')
+      );
+    } else {
+      controls.append(
+        button('Restore', async () => {
+          await request('/memory/pages/restore', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path: pg.path }),
+          });
+          await refreshAgentHub();
+        }, 'sm')
+      );
+    }
+    row.append(p, meta, controls);
+    wikiWrap.append(row);
+  }
+}
+
+el('btn-hub-briefing').onclick = () => action(generateBriefing);
+el('btn-hub-refresh').onclick = () => action(refreshAgentHub);
+
+el('handoff-form').onsubmit = (event) => {
+  event.preventDefault();
+  action(async () => {
+    const nextSteps = input('hf-next-steps').value.split(';').map((s) => s.trim()).filter(Boolean);
+    const files = input('hf-files').value.split(',').map((s) => s.trim()).filter(Boolean);
+    await request('/memory/handoffs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        project: hubProject(),
+        from_agent: input('hf-from-agent').value.trim() || 'agent',
+        summary: (el('hf-summary') as HTMLTextAreaElement).value,
+        next_steps: nextSteps,
+        files_touched: files,
+      }),
+    });
+    (el('hf-summary') as HTMLTextAreaElement).value = '';
+    await refreshAgentHub();
+  });
+};
+
+el('msg-form').onsubmit = (event) => {
+  event.preventDefault();
+  action(async () => {
+    await request('/memory/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from_project: hubProject(),
+        to_project: input('msg-to-project').value.trim() || 'default',
+        to_agent: input('msg-to-agent').value.trim() || null,
+        subject: input('msg-subject').value.trim(),
+        body: (el('msg-body') as HTMLTextAreaElement).value,
+        nature: select('msg-nature').value,
+        evidence: input('msg-evidence').value.trim(),
+      }),
+    });
+    (el('msg-body') as HTMLTextAreaElement).value = '';
+    input('msg-subject').value = '';
+    await refreshAgentHub();
+  });
+};
+
+el('btn-msg-pop').onclick = () => {
+  action(async () => {
+    const res = await request('/memory/messages/pop', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ project: hubProject(), agent: 'ui-operator' }),
+    });
+    el('hub-briefing-md').textContent = JSON.stringify(res, null, 2);
+    await refreshAgentHub();
+  });
+};
+
+el('wiki-form').onsubmit = (event) => {
+  event.preventDefault();
+  action(async () => {
+    const tags = input('wiki-tags').value.split(',').map((t) => t.trim()).filter(Boolean);
+    await request('/memory/pages', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        path: input('wiki-path').value.trim(),
+        title: input('wiki-title').value.trim(),
+        kind: select('wiki-kind').value,
+        project: hubProject(),
+        pinned: input('wiki-pinned').checked,
+        tags,
+        content: (el('wiki-content') as HTMLTextAreaElement).value,
+      }),
+    });
+    await refreshAgentHub();
+  });
+};
+
+el('btn-wiki-search').onclick = () => {
+  action(async () => {
+    const q = input('wiki-search').value.trim();
+    if (!q) {
+      await refreshAgentHub();
+      return;
+    }
+    const hits = await request(`/memory/pages?project=${encodeURIComponent(hubProject())}&q=${encodeURIComponent(q)}`);
+    el('wiki-viewer').textContent = JSON.stringify(hits, null, 2);
+  });
+};
+
 async function refreshAll() {
   await Promise.all([
     refreshOverview(),
@@ -1821,6 +2216,7 @@ async function refreshAll() {
     refreshMemory(),
     refreshExperiments(),
     refreshEmbeddingSettings(),
+    refreshAgentHub(),
   ]);
 }
 
@@ -1996,12 +2392,50 @@ el('mem-store-form').onsubmit = (event) => {
       body: JSON.stringify({
         content: (el('mem-content') as HTMLTextAreaElement).value,
         session_id: input('mem-session').value.trim() || 'default',
+        project: input('mem-project')?.value.trim() || 'default',
+        tier: select('mem-tier')?.value || 'episodic',
+        pinned: Boolean(input('mem-pinned')?.checked),
         role: select('mem-role').value,
         strategy: select('mem-store-strategy').value,
         tags,
       }),
     });
     (el('mem-content') as HTMLTextAreaElement).value = '';
+    await Promise.all([refreshMemory(), refreshOverview()]);
+  });
+};
+
+el('btn-mem-lint').onclick = () => {
+  action(async () => {
+    const out = el('mem-hygiene-output');
+    out.style.display = 'block';
+    out.textContent = JSON.stringify(await request('/memory/lint'), null, 2);
+  });
+};
+
+el('btn-mem-sweep-dry').onclick = () => {
+  action(async () => {
+    const out = el('mem-hygiene-output');
+    out.style.display = 'block';
+    const res = await request('/memory/forget-sweep', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dry_run: true }),
+    });
+    out.textContent = JSON.stringify(res, null, 2);
+  });
+};
+
+el('btn-mem-sweep-run').onclick = () => {
+  action(async () => {
+    const out = el('mem-hygiene-output');
+    out.style.display = 'block';
+    const res = await request('/memory/forget-sweep', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dry_run: false }),
+    });
+    out.textContent = JSON.stringify(res, null, 2);
     await Promise.all([refreshMemory(), refreshOverview()]);
   });
 };

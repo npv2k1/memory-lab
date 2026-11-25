@@ -101,9 +101,13 @@ class EnrichmentArtifact(BaseModel):
     temporal: list[TemporalAnchor] = Field(default_factory=list)
 
 
-# --- Phase 2 & 3: Memory Models ---
+# --- Phase 2, 3 & ai-memory Integration Models ---
 
 MemoryStrategyName = Literal["vector", "graph", "zero_token", "hybrid"]
+MemoryTierName = Literal["working", "episodic", "semantic", "procedural"]
+FeedbackSignalName = Literal["helpful", "not_helpful", "stale", "wrong"]
+EpistemicNature = Literal["measured", "reported", "inferred", "unknown"]
+WikiPageKind = Literal["concept", "decision", "gotcha", "procedure", "rule", "note"]
 PipelineStageName = Literal["parse", "normalize", "chunk", "enrich", "index"]
 SearchMode = Literal["dense", "sparse", "hybrid"]
 
@@ -122,6 +126,16 @@ class MemoryRecord(BaseModel):
     id: str
     strategy: MemoryStrategyName
     namespace: str = "default"
+    project: str = "default"
+    tier: MemoryTierName = "episodic"
+    pinned: bool = False
+    salience: float = Field(default=1.0, ge=0.25, le=2.0)
+    access_count: int = Field(default=0, ge=0)
+    last_accessed_at: str | None = None
+    expires_at: str | None = None
+    archived: bool = False
+    archived_reason: str | None = None
+    feedback_history: list[dict[str, Any]] = Field(default_factory=list)
     content: str
     summary: str = ""
     trace_ids: list[str] = Field(default_factory=list)
@@ -150,6 +164,11 @@ class MemorySearchHit(BaseModel):
 class MemoryStoreRequest(BaseModel):
     content: str = Field(min_length=1, max_length=50000)
     session_id: str = Field(default="default", min_length=1, max_length=128)
+    project: str = Field(default="default", min_length=1, max_length=128)
+    tier: MemoryTierName = "episodic"
+    pinned: bool = False
+    expires_at: str | None = None
+    scrub_secrets: bool = True
     role: Literal["user", "assistant", "system", "tool"] = "user"
     strategy: MemoryStrategyName | None = None
     timestamp: str | None = None
@@ -163,7 +182,144 @@ class MemorySearchRequest(BaseModel):
     strategy: MemoryStrategyName | None = None
     limit: int = Field(default=5, ge=1, le=50)
     session_id: str | None = None
+    project: str | None = None
     temporal_bucket: str | None = None
+
+
+class MemoryFeedbackRequest(BaseModel):
+    signal: FeedbackSignalName
+    reason: str = Field(default="", max_length=500)
+
+
+class ForgetSweepRequest(BaseModel):
+    dry_run: bool = True
+    project: str | None = None
+    cold_threshold: float = Field(default=0.20, ge=0.0, le=2.0)
+    lambda_decay: float = Field(default=0.02, ge=0.0, le=5.0)
+
+
+class HandoffCreateRequest(BaseModel):
+    summary: str = Field(min_length=1, max_length=10000)
+    project: str = Field(default="default", min_length=1, max_length=128)
+    session_id: str = Field(default="default", min_length=1, max_length=128)
+    from_agent: str = Field(default="agent", min_length=1, max_length=128)
+    next_steps: list[str] = Field(default_factory=list)
+    open_questions: list[str] = Field(default_factory=list)
+    files_touched: list[str] = Field(default_factory=list)
+    shared: bool = True
+
+
+class HandoffAcceptRequest(BaseModel):
+    handoff_id: str | None = None
+    project: str | None = None
+    agent: str = Field(default="agent", min_length=1, max_length=128)
+
+
+class HandoffRecord(BaseModel):
+    id: str
+    project: str = "default"
+    session_id: str = "default"
+    from_agent: str = "agent"
+    summary: str
+    next_steps: list[str] = Field(default_factory=list)
+    open_questions: list[str] = Field(default_factory=list)
+    files_touched: list[str] = Field(default_factory=list)
+    shared: bool = True
+    status: Literal["pending", "accepted", "cancelled"] = "pending"
+    created_at: str = Field(default_factory=utc_now_iso)
+    accepted_at: str | None = None
+    accepted_by: str | None = None
+    cancelled_at: str | None = None
+
+
+class AgentMessageSendRequest(BaseModel):
+    to_project: str = Field(min_length=1, max_length=128)
+    body: str = Field(min_length=1, max_length=20000)
+    from_project: str = Field(default="default", min_length=1, max_length=128)
+    from_agent: str = Field(default="agent", min_length=1, max_length=128)
+    to_agent: str | None = Field(default=None, max_length=128)
+    subject: str = Field(default="", max_length=300)
+    nature: EpistemicNature = "unknown"
+    evidence: str = Field(default="", max_length=4000)
+
+
+class AgentMessagePopRequest(BaseModel):
+    project: str = Field(default="default", min_length=1, max_length=128)
+    message_id: str | None = None
+    agent: str | None = None
+
+
+class AgentMessageCancelRequest(BaseModel):
+    project: str = Field(default="default", min_length=1, max_length=128)
+    message_id: str | None = None
+
+
+class AgentMessageRecord(BaseModel):
+    id: str
+    from_project: str
+    to_project: str
+    from_agent: str = "agent"
+    to_agent: str | None = None
+    subject: str = ""
+    body: str
+    nature: EpistemicNature = "unknown"
+    evidence: str = ""
+    status: Literal["pending", "claimed", "cancelled"] = "pending"
+    created_at: str = Field(default_factory=utc_now_iso)
+    claimed_at: str | None = None
+    claimed_by: str | None = None
+    cancelled_at: str | None = None
+
+
+class WikiPageWriteRequest(BaseModel):
+    path: str = Field(min_length=1, max_length=256)
+    title: str = Field(min_length=1, max_length=300)
+    content: str = Field(min_length=1, max_length=100000)
+    kind: WikiPageKind = "note"
+    tier: MemoryTierName = "semantic"
+    project: str = Field(default="default", min_length=1, max_length=128)
+    pinned: bool = False
+    tags: list[str] = Field(default_factory=list)
+    expires_at: str | None = None
+    author: str = Field(default="agent", max_length=128)
+
+
+class WikiPagePatchRequest(BaseModel):
+    path: str = Field(min_length=1, max_length=256)
+    append: str | None = None
+    replace_old: str | None = None
+    replace_new: str | None = None
+    title: str | None = None
+    pinned: bool | None = None
+    tags: list[str] | None = None
+    author: str = Field(default="agent", max_length=128)
+
+
+class WikiPageRestoreRequest(BaseModel):
+    path: str = Field(min_length=1, max_length=256)
+    version: int | None = Field(default=None, ge=1)
+
+
+class WikiPageRecord(BaseModel):
+    path: str
+    title: str
+    content: str
+    kind: WikiPageKind = "note"
+    tier: MemoryTierName = "semantic"
+    project: str = "default"
+    pinned: bool = False
+    salience: float = Field(default=1.0, ge=0.25, le=2.0)
+    access_count: int = Field(default=0, ge=0)
+    last_accessed_at: str | None = None
+    tags: list[str] = Field(default_factory=list)
+    entities: list[str] = Field(default_factory=list)
+    links: list[str] = Field(default_factory=list)
+    version: int = 1
+    deleted: bool = False
+    author: str = "agent"
+    created_at: str = Field(default_factory=utc_now_iso)
+    updated_at: str = Field(default_factory=utc_now_iso)
+    expires_at: str | None = None
 
 
 class TemporalSummaryNode(BaseModel):
