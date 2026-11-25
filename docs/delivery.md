@@ -1,6 +1,27 @@
 # Docker, CI/CD và E2E
 
-## Local stack
+## Production stack (chạy ngay từ GHCR)
+
+Với repository public, GitHub Actions tự động build và publish image tại `ghcr.io/npv2k1/memory-lab/{api,web}` với các tags `main`, `latest`, `sha-<commit>` (và `v*` khi gắn git tag).
+
+```bash
+# Chạy ngay không cần cấu hình thêm (chế độ sparse/graph/zero_token chạy lập tức):
+docker compose -f docker-compose.prod.yml up -d --wait
+
+# Hoặc cấu hình Embedding API / Neo4j / Domain HTTPS:
+cp .env.prod.example .env.prod
+docker compose -f docker-compose.prod.yml up -d --wait
+
+# Bật thêm Neo4j Graph Store:
+docker compose -f docker-compose.prod.yml --profile graph up -d --wait
+
+# Bật thêm HTTPS tự động qua Caddy (cần điền DOMAIN=... trong .env.prod):
+docker compose -f docker-compose.prod.yml --profile tls up -d --wait
+```
+
+`docker-compose.prod.yml` đã cấu hình sẵn mạng nội bộ `internal` (không mở port Qdrant/API/Neo4j ra ngoài), healthchecks cho mọi dịch vụ, log rotation (`10m × 3`), `no-new-privileges: true`, Nginx nén gzip + header bảo mật và volume bền vững (`artifacts`, `models`, `qdrant`).
+
+## Local build stack
 
 ```bash
 cp .env.example .env
@@ -13,17 +34,17 @@ Backend có healthcheck API + Qdrant, web chờ API healthy. Raw data/model/inde
 
 ## CI và image delivery
 
-`.github/workflows/ci.yml` chạy khi push main, mở/cập nhật PR, hoặc chạy thủ công:
+`.github/workflows/ci.yml` chạy khi push `main` / tag `v*`, mở/cập nhật PR, hoặc chạy thủ công:
 
-1. Python integration tests, Astro production build, kiểm tra cấu hình Compose.
+1. Toàn bộ Python unit/integration tests, kiểm tra cú pháp Colab notebook, Astro production build, và kiểm tra cấu hình cả 4 file Compose (`docker-compose.yml`, `docker-compose.e2e.yml`, `docker-compose.prod.yml`, `docker-compose.deploy.yml`).
 2. Stack E2E độc lập: web Nginx → API HTTP → embedding fixture HTTP → Qdrant server.
-3. Playwright Chromium kiểm tra upload → process TXT → inspector → search → tải đúng source → retry và báo lỗi cấu hình.
-4. Khi cả hai job đạt trên main: build production images, publish GHCR với tags `sha-<full commit SHA>` và `main`.
+3. Playwright Chromium kiểm tra toàn bộ luồng Documents, Memory Playground, Experimentation/Comparison, Embedding Atlas, Knowledge Graph và Knowledge Table.
+4. Khi cả hai job đạt trên `main` (hoặc tag `v*`): build production images, publish GHCR với tags `sha-<full commit SHA>`, `main`, `latest` (và `v*`).
 
 Images:
 
-- `ghcr.io/npv2k1/memory-lab/api:sha-<commit>` (có Docling).
-- `ghcr.io/npv2k1/memory-lab/web:sha-<commit>`.
+- `ghcr.io/npv2k1/memory-lab/api:latest` / `:main` / `:sha-<commit>` (có Docling).
+- `ghcr.io/npv2k1/memory-lab/web:latest` / `:main` / `:sha-<commit>` (Nginx + Astro SaaS UI).
 
 Publish dùng `GITHUB_TOKEN`, permission `packages: write`; không cần PAT cho workflow. Repository/organization có thể cần bật quyền Actions/Packages theo policy. Kiến trúc image mặc định linux/amd64 của GitHub-hosted runner.
 

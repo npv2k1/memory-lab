@@ -1,0 +1,122 @@
+name: memory-lab-prod
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  qdrant:
+    image: qdrant/qdrant:v1.14.1
+    restart: unless-stopped
+    security_opt: ["no-new-privileges:true"]
+    volumes:
+      - qdrant:/qdrant/storage
+    networks: [internal]
+    logging: *default-logging
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/6333 && printf \"GET /readyz HTTP/1.0\\r\\n\\r\\n\" >&3 && grep -q \"200 OK\" <&3'"]
+      interval: 10s
+      timeout: 5s
+      start_period: 10s
+      retries: 12
+
+  api:
+    image: ${REGISTRY_PREFIX:-ghcr.io/npv2k1/memory-lab}/api:${IMAGE_TAG:-main}
+    pull_policy: ${PULL_POLICY:-missing}
+    restart: unless-stopped
+    security_opt: ["no-new-privileges:true"]
+    env_file:
+      - path: ${PROD_ENV_FILE:-.env.prod}
+        required: false
+    environment:
+      DATA_DIR: /data
+      QDRANT_URL: http://qdrant:6333
+      DEFAULT_MEMORY_STRATEGY: ${DEFAULT_MEMORY_STRATEGY:-hybrid}
+      CORS_ORIGINS: ${CORS_ORIGINS:-["http://localhost:4321","http://127.0.0.1:4321"]}
+    volumes:
+      - artifacts:/data
+      - models:/root/.cache
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      qdrant:
+        condition: service_healthy
+    networks: [internal]
+    logging: *default-logging
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3); urllib.request.urlopen('http://qdrant:6333/readyz', timeout=3)"]
+      interval: 10s
+      timeout: 8s
+      start_period: 25s
+      retries: 12
+
+  web:
+    image: ${REGISTRY_PREFIX:-ghcr.io/npv2k1/memory-lab}/web:${IMAGE_TAG:-main}
+    pull_policy: ${PULL_POLICY:-missing}
+    restart: unless-stopped
+    security_opt: ["no-new-privileges:true"]
+    ports:
+      - "${WEB_BIND:-0.0.0.0}:${WEB_PORT:-4321}:4321"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks: [internal]
+    logging: *default-logging
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:4321/"]
+      interval: 10s
+      timeout: 3s
+      start_period: 10s
+      retries: 10
+
+  neo4j:
+    image: neo4j:5.26-community
+    profiles: [graph]
+    restart: unless-stopped
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:-memory-lab-local}
+    volumes:
+      - neo4j_data:/data
+    networks: [internal]
+    logging: *default-logging
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:7474 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      start_period: 30s
+      retries: 12
+
+  caddy:
+    image: caddy:2.9-alpine
+    profiles: [tls]
+    restart: unless-stopped
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      web:
+        condition: service_healthy
+    networks: [internal]
+    logging: *default-logging
+
+networks:
+  internal:
+    driver: bridge
+
+volumes:
+  artifacts:
+  models:
+  qdrant:
+  neo4j_data:
+  caddy_data:
+  caddy_config:

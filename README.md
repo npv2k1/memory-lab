@@ -1,8 +1,30 @@
 # Memory Lab
 
-Nền tảng R&D xử lý tài liệu, bộ nhớ dài hạn cho agent và đánh giá truy xuất (đã triển khai đầy đủ Phase 1–4).
+[![CI and images](https://github.com/npv2k1/memory-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/npv2k1/memory-lab/actions/workflows/ci.yml)
 
-## Khởi chạy
+Nền tảng R&D xử lý tài liệu, trực quan hóa kho tri thức (Embedding Atlas, đồ thị, bảng), bộ nhớ dài hạn cho agent và đánh giá truy xuất (đã triển khai đầy đủ Phase 1–4).
+
+## Chạy Production ngay lập tức (Docker Compose + GHCR)
+
+Không cần build code — kéo thẳng image public từ GitHub Container Registry và chạy:
+
+```bash
+# 1. (Tùy chọn) Tạo cấu hình môi trường nếu muốn cấu hình Embedding API / Neo4j / Domain TLS
+cp .env.prod.example .env.prod
+
+# 2. Khởi chạy ngay stack production (Web Nginx :4321 + FastAPI/Docling + Qdrant)
+docker compose -f docker-compose.prod.yml up -d --wait
+
+# Tùy chọn bật thêm Neo4j Graph Store:
+# docker compose -f docker-compose.prod.yml --profile graph up -d --wait
+
+# Tùy chọn bật thêm HTTPS tự động với Caddy (điền DOMAIN=... trong .env.prod):
+# docker compose -f docker-compose.prod.yml --profile tls up -d --wait
+```
+
+Mở giao diện SaaS tại **http://localhost:4321** · API docs tại `/api/docs`.
+
+## Khởi chạy Local Build / Development
 
 Yêu cầu Docker Compose, hoặc Python 3.12+ (`uv`) và Bun `1.4.4`. Embedding endpoint phải hỗ trợ OpenAI `/v1/embeddings` (các chiến lược `sparse`, `zero_token` và `graph` chạy được không cần embedding server).
 
@@ -80,6 +102,14 @@ uv run --no-sync pytest
 - `GET /memory/graph?entity=...` snapshot đồ thị thực thể/quan hệ.
 - `POST /mcp` JSON-RPC 2.0 MCP endpoint (`initialize`, `tools/list`, `tools/call` với `memory_store`, `memory_search`, `memory_get`, `memory_delete`).
 
+### Knowledge Visualization & Unified Search (Bảng, Đồ thị & Tìm kiếm)
+
+- `GET /knowledge/overview` thống kê tổng quan kho tri thức (tài liệu, chunks, ký ức, thực thể, quan hệ, mốc thời gian).
+- `GET /knowledge/atlas?source=all|documents|memory&n_clusters=...` chiếu embedding 2D (`SVD + kNN`), tự động phân cụm & gắn nhãn, mật độ KDE contours, Top-5 nearest neighbors và facet lọc chéo theo phong cách Apple Embedding Atlas.
+- `GET /knowledge/table?view=entities|relations|chunks|memories|timeline&q=...&source=all|documents|memory` API bảng dữ liệu có lọc & phân trang.
+- `GET /knowledge/graph?entity=...&source=all|documents|memory&include_cooccurrence=true` đồ thị tri thức hợp nhất từ cả tài liệu và bộ nhớ agent.
+- `GET /knowledge/search?q=...&scope=all|documents|memory&doc_mode=hybrid&memory_strategy=hybrid` tìm kiếm hợp nhất trả về tài liệu, ký ức, thực thể và quan hệ liên quan.
+
 ### Experimentation (Phase 4)
 
 - `GET /experiments/datasets`, `POST /experiments/datasets`, `GET /experiments/datasets/{id}`.
@@ -118,6 +148,14 @@ uv run --no-sync pytest
 4. **Phase 4 — Experimentation (đã hoàn tất):** stage cache & invalidation API → search filters (`document_id`/`version`/`pipeline_run_id`) → dataset/config snapshots → `Recall@K`/`MRR`/`nDCG@K` → Comparison UI.
 
 Chi tiết hợp đồng và ranh giới xử lý dữ liệu: [documents modules](src/memory_lab/documents/README.md).
+Hướng dẫn tích hợp vào LLM & AI Agent (MCP, REST API, Tool Calling, Python SDK): [LLM integration guide](docs/llm-integration.md).
+Bản **Enterprise Production SaaS** (Multi-tenant, RBAC/JWT, Rate Limit, Async Workers, PostgreSQL, Redis, Qdrant, Neo4j, MinIO S3, Prometheus & Grafana): [Enterprise SaaS guide](docs/enterprise.md) · [`docker-compose.enterprise.yml`](docker-compose.enterprise.yml).
+
+## Benchmark trên Google Colab
+
+So sánh trực tiếp 4 chiến lược của Memory Lab (`ZeroToken`, `Graph`, `Vector`, `Hybrid`) với `Naive-Recency`, `RankBM25`, `FAISS-FlatIP`, `ChromaDB` và tùy chọn `Mem0-OSS` bằng notebook [`notebooks/memory_benchmark_colab.ipynb`](notebooks/memory_benchmark_colab.ipynb):
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/npv2k1/memory-lab/blob/main/notebooks/memory_benchmark_colab.ipynb)
 
 ## Docker, CI/CD và E2E
 

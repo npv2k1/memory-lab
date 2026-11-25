@@ -3,6 +3,15 @@ from qdrant_client import QdrantClient, models
 from memory_lab.core.models import Chunk, Evidence
 
 
+def create_qdrant_client(qdrant_url: str) -> QdrantClient:
+    """Create a QdrantClient from an HTTP URL, ':memory:', or 'path:<dir>' for embedded local storage."""
+    if qdrant_url == ":memory:":
+        return QdrantClient(location=":memory:")
+    if qdrant_url.startswith("path:"):
+        return QdrantClient(path=qdrant_url.removeprefix("path:"))
+    return QdrantClient(url=qdrant_url)
+
+
 class QdrantIndex:
     def __init__(self, client: QdrantClient, collection: str):
         self.client, self.collection = client, collection

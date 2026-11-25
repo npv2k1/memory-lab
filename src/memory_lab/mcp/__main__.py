@@ -1,20 +1,19 @@
 import json
 import sys
-from qdrant_client import QdrantClient
 from memory_lab.core.config import Settings
 from memory_lab.mcp.server import MCPServer
 from memory_lab.memory.service import MemoryService
 from memory_lab.retrieval.embedding import OpenAIEmbeddings
 from memory_lab.storage.filesystem.store import FileStore
 from memory_lab.storage.graph.store import FileGraphStore, Neo4jGraphStore
-from memory_lab.storage.qdrant.index import QdrantIndex
+from memory_lab.storage.qdrant.index import QdrantIndex, create_qdrant_client
 
 
 def build_default_mcp_server(settings: Settings | None = None) -> MCPServer:
     settings = settings or Settings()
     store = FileStore(settings.data_dir)
     embedding = OpenAIEmbeddings(settings.embedding_base_url, settings.embedding_api_key, settings.embedding_model)
-    index = QdrantIndex(QdrantClient(url=settings.qdrant_url), settings.qdrant_collection)
+    index = QdrantIndex(create_qdrant_client(settings.qdrant_url), settings.qdrant_collection)
     file_graph = FileGraphStore(store)
     graph = (
         Neo4jGraphStore(
