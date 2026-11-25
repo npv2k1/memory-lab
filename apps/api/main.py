@@ -4,7 +4,7 @@ import json
 import time
 from typing import Any
 from uuid import UUID, uuid4
-from fastapi import BackgroundTasks, FastAPI, File, HTTPException, Query, Request, UploadFile
+from fastapi import BackgroundTasks, FastAPI, File, HTTPException, Query, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, StreamingResponse
 from pydantic import BaseModel, Field
@@ -635,7 +635,10 @@ def create_app(
         _ctx, svc = resolve(request, required)
         response = svc.mcp.handle_message(payload)
         if response is None:
-            return JSONResponse(status_code=204, content=None)
+            # JSON-RPC notification (e.g. notifications/initialized): MCP Streamable HTTP
+            # requires 202 Accepted with no body. JSONResponse(content=None) would emit
+            # "null", which breaks the 0-length 204 response in Starlette.
+            return Response(status_code=202)
         return response
 
     # --- Phase 4: Experimentation, Datasets, Benchmarks & Comparison ---
