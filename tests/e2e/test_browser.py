@@ -116,14 +116,19 @@ def test_knowledge_explorer_graph_table_and_search(page):
     doc.get_by_role("button", name="Process", exact=True).click()
     expect(page.locator("#status")).to_have_text("Hoàn tất.")
 
-    # Use Global Search Bar to jump into Knowledge Explorer with unified search
+    # Use Global Search Bar to jump into Knowledge Explorer (default: Embedding Atlas)
     page.locator("#global-search-input").fill(f"Qdrant marker-{marker}")
     page.locator("#global-search-form button[type='submit']").click()
     expect(page.locator("#tab-knowledge")).to_be_visible()
     expect(page.locator("#kb-search-results")).to_contain_text(f"marker-{marker}")
+    expect(page.locator("#embedding-atlas-canvas")).to_be_visible()
+    expect(page.locator("#atlas-linked-table table")).to_contain_text(f"kb-{marker}.txt")
+
+    # Switch to Interactive Knowledge Graph view
+    page.locator("#kb-viz-switch button[data-viz='graph']").click()
     expect(page.locator("#knowledge-graph-svg g[data-node-id]")).not_to_have_count(0)
 
-    # Switch to Table view and check entities + relations + chunks
+    # Switch to Table view and check entities + relations
     page.locator("#kb-viz-switch button[data-viz='table']").click()
     expect(page.locator("#kb-table-container table")).to_contain_text("Qdrant")
     page.locator("#kb-table-views button[data-view='relations']").click()

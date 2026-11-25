@@ -17,6 +17,7 @@ from memory_lab.core.models import (
 from memory_lab.documents.ingestion.service import IngestionService
 from memory_lab.documents.pipeline.service import DocumentPipeline
 from memory_lab.experiments.service import ExperimentService
+from memory_lab.knowledge.atlas import AtlasSourceFilter, EmbeddingAtlasService
 from memory_lab.knowledge.service import KnowledgeService, KnowledgeSourceFilter, TableViewName
 from memory_lab.mcp.server import MCPServer
 from memory_lab.memory.service import MemoryService
@@ -63,6 +64,7 @@ def create_app(
 
     experiments = experiments or ExperimentService(store, pipeline, memory)
     knowledge = KnowledgeService(store, pipeline, memory)
+    atlas = EmbeddingAtlasService(store, memory)
     mcp_server = MCPServer(memory)
     ingestion = IngestionService(store)
 
@@ -309,6 +311,14 @@ def create_app(
             temporal_bucket=temporal_bucket,
             limit=limit,
         )
+
+    @app.get("/knowledge/atlas")
+    def knowledge_atlas(
+        source: AtlasSourceFilter = Query("all"),
+        n_clusters: int | None = Query(None, ge=1, le=12),
+        limit: int = Query(500, ge=10, le=2000),
+    ):
+        return atlas.build_atlas(source=source, n_clusters=n_clusters, limit=limit)
 
     return app
 

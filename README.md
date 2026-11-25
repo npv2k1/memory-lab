@@ -83,6 +83,7 @@ uv run --no-sync pytest
 ### Knowledge Visualization & Unified Search (Bảng, Đồ thị & Tìm kiếm)
 
 - `GET /knowledge/overview` thống kê tổng quan kho tri thức (tài liệu, chunks, ký ức, thực thể, quan hệ, mốc thời gian).
+- `GET /knowledge/atlas?source=all|documents|memory&n_clusters=...` chiếu embedding 2D (`SVD + kNN`), tự động phân cụm & gắn nhãn, mật độ KDE contours, Top-5 nearest neighbors và facet lọc chéo theo phong cách Apple Embedding Atlas.
 - `GET /knowledge/table?view=entities|relations|chunks|memories|timeline&q=...&source=all|documents|memory` API bảng dữ liệu có lọc & phân trang.
 - `GET /knowledge/graph?entity=...&source=all|documents|memory&include_cooccurrence=true` đồ thị tri thức hợp nhất từ cả tài liệu và bộ nhớ agent.
 - `GET /knowledge/search?q=...&scope=all|documents|memory&doc_mode=hybrid&memory_strategy=hybrid` tìm kiếm hợp nhất trả về tài liệu, ký ức, thực thể và quan hệ liên quan.

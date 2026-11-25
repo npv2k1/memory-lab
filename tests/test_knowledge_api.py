@@ -86,4 +86,22 @@ def test_knowledge_overview_table_graph_and_unified_search(tmp_path):
         assert len(search["memories"]) >= 1
         assert any(e["id"] == "qdrant" for e in search["matched_entities"])
         assert len(search["matched_relations"]) >= 1
+
+        # 5. Embedding Atlas API (2D projection, clusters, KDE contours, kNN, facets)
+        api.post(
+            "/memory/store",
+            json={"content": "BM25 sparse ranking works offline with zero tokens.", "strategy": "zero_token"},
+        )
+        api.post(
+            "/memory/store",
+            json={"content": "Qdrant vector index stores cosine embeddings for documents.", "strategy": "vector"},
+        )
+        atlas = api.get("/knowledge/atlas").json()
+        assert atlas["total_points"] == 4
+        assert len(atlas["points"]) == 4
+        assert len(atlas["clusters"]) >= 2
+        assert len(atlas["density"]["values"]) == atlas["density"]["grid_size"] ** 2
+        assert all("x" in pt and "y" in pt and "cluster_label" in pt for pt in atlas["points"])
+        assert len(atlas["points"][0]["neighbors"]) >= 1
+        assert len(atlas["facets"]["sources"]) == 2
     client.close()

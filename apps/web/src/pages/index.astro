@@ -77,6 +77,7 @@ import '../styles/app.css';
         <button type="submit" class="sm">Tìm</button>
       </form>
       <div class="topbar-actions">
+        <button type="button" class="sm" id="btn-open-atlas">Embedding Atlas</button>
         <button type="button" class="secondary sm" id="btn-open-graph">Đồ thị tri thức</button>
         <button type="button" class="secondary sm" id="btn-open-table">Bảng tri thức</button>
         <button type="button" class="secondary sm" id="btn-refresh-all">Đồng bộ</button>
@@ -186,13 +187,14 @@ import '../styles/app.css';
           <div id="kb-search-results"></div>
         </section>
 
-        <!-- Interactive Visualization Switcher: Graph & Table -->
+        <!-- Interactive Visualization Switcher: Embedding Atlas, Graph & Table -->
         <section class="card">
           <div class="card-head">
             <h2>Trực quan hóa Kho tri thức</h2>
             <div class="controls">
               <div class="segmented" id="kb-viz-switch">
-                <button type="button" class="active" data-viz="graph">Đồ thị tri thức</button>
+                <button type="button" class="active" data-viz="atlas">Embedding Atlas</button>
+                <button type="button" data-viz="graph">Đồ thị tri thức</button>
                 <button type="button" data-viz="table">Bảng dữ liệu</button>
               </div>
               <select id="kb-source-filter" aria-label="Source filter">
@@ -203,8 +205,79 @@ import '../styles/app.css';
             </div>
           </div>
 
+          <!-- EMBEDDING ATLAS VIEW (Apple Embedding Atlas-inspired) -->
+          <div id="kb-viz-atlas">
+            <div class="controls" style="justify-content:space-between">
+              <div class="controls">
+                <input id="atlas-search-input" placeholder="Tìm & highlight trên Embedding Atlas…" style="min-width:230px"/>
+                <label>Màu theo
+                  <select id="atlas-color-by">
+                    <option value="cluster">Cụm tự động (Cluster)</option>
+                    <option value="source_type">Nguồn (Document / Memory)</option>
+                    <option value="strategy">Chiến lược (Strategy)</option>
+                    <option value="session_id">Session / Tài liệu</option>
+                  </select>
+                </label>
+                <div class="segmented" id="atlas-mode-switch">
+                  <button type="button" class="active" data-mode="pan">Pan / Chọn điểm</button>
+                  <button type="button" data-mode="brush">Quét vùng (Brush)</button>
+                </div>
+                <label><input id="atlas-contours" type="checkbox" checked/> Density Contours</label>
+                <label><input id="atlas-labels" type="checkbox" checked/> Cluster Labels</label>
+              </div>
+              <div class="controls">
+                <span class="pill accent" id="atlas-filter-status">0 / 0 điểm</span>
+                <button type="button" class="secondary sm" id="btn-atlas-clear-filters">Xóa bộ lọc</button>
+              </div>
+            </div>
+
+            <div class="atlas-layout">
+              <div class="atlas-stage-wrap">
+                <div class="graph-toolbar">
+                  <button type="button" class="secondary sm" id="btn-atlas-zoom-in" title="Phóng to">+</button>
+                  <button type="button" class="secondary sm" id="btn-atlas-zoom-out" title="Thu nhỏ">−</button>
+                  <button type="button" class="secondary sm" id="btn-atlas-zoom-reset" title="Đặt lại">Reset</button>
+                </div>
+                <canvas id="embedding-atlas-canvas" aria-label="Bản đồ Embedding Atlas 2D tương tác"></canvas>
+                <div id="atlas-tooltip" class="atlas-tooltip"></div>
+                <div class="atlas-meta-strip" id="atlas-meta-strip">SVD + kNN · KDE Contours</div>
+              </div>
+
+              <aside class="atlas-sidebar" aria-label="Bộ lọc chéo và chi tiết điểm">
+                <div class="facet-card" id="atlas-inspector">
+                  <h3>Điểm đang chọn &amp; Nearest Neighbors</h3>
+                  <p class="hint" style="margin:0">Nhấp vào một điểm trên bản đồ để xem nội dung, chứng cứ và top láng giềng gần nhất.</p>
+                </div>
+                <div class="facet-card">
+                  <h3>Cụm tri thức (Auto Clusters)</h3>
+                  <div id="atlas-facet-clusters"></div>
+                </div>
+                <div class="facet-card">
+                  <h3>Nguồn &amp; Chiến lược</h3>
+                  <div id="atlas-facet-strategies"></div>
+                </div>
+                <div class="facet-card">
+                  <h3>Phân bố thời gian</h3>
+                  <div id="atlas-facet-dates"></div>
+                </div>
+                <div class="facet-card">
+                  <h3>Thực thể nổi bật</h3>
+                  <div id="atlas-facet-entities" class="meta" style="margin:0"></div>
+                </div>
+              </aside>
+            </div>
+
+            <div style="margin-top:16px">
+              <div class="card-head" style="margin-bottom:6px">
+                <h3>Bảng dữ liệu liên kết theo vùng chọn (Cross-Filtered Table)</h3>
+                <span class="hint" style="margin:0">Nhấp vào một dòng để phóng tới điểm tương ứng trên Embedding Atlas.</span>
+              </div>
+              <div id="atlas-linked-table" class="table-wrap"></div>
+            </div>
+          </div>
+
           <!-- GRAPH VIEW -->
-          <div id="kb-viz-graph">
+          <div id="kb-viz-graph" style="display:none">
             <div class="controls">
               <input id="kb-graph-entity" placeholder="Tập trung theo thực thể (vd: Qdrant, Neo4j)…" style="min-width:260px"/>
               <label><input id="kb-graph-cooccur" type="checkbox" checked/> Hiện quan hệ đồng xuất hiện</label>
@@ -418,6 +491,16 @@ import '../styles/app.css';
 </div>
 
 <script>
+import {
+  EmbeddingAtlasCanvas,
+  atlasColorForPoint,
+  clusterColor,
+  type AtlasColorBy,
+  type AtlasFilterState,
+  type AtlasInteractionMode,
+  type AtlasPayload,
+  type AtlasPoint,
+} from '../lib/atlas';
 import { InteractiveKnowledgeGraph, type GraphEdgeData, type GraphNodeData } from '../lib/graph';
 
 const el = (id: string) => document.getElementById(id)!;
@@ -431,8 +514,8 @@ const TAB_META: Record<string, { title: string; subtitle: string }> = {
     subtitle: 'Nạp tài liệu, xử lý trích xuất phi-LLM, kiểm tra stage cache và truy xuất nguồn chứng cứ.',
   },
   knowledge: {
-    title: 'Knowledge Explorer — Bảng, Đồ thị & Tìm kiếm',
-    subtitle: 'Trực quan hóa toàn bộ thực thể, quan hệ và tài liệu thành đồ thị tương tác hoặc bảng dữ liệu có thể tự tìm kiếm.',
+    title: 'Knowledge Explorer — Embedding Atlas, Đồ thị & Bảng',
+    subtitle: 'Khám phá không gian embedding 2D kèm KDE contours, lọc chéo đa chiều, đồ thị thực thể và bảng dữ liệu.',
   },
   memory: {
     title: 'Agent Memory Playground',
@@ -446,8 +529,19 @@ const TAB_META: Record<string, { title: string; subtitle: string }> = {
 
 let activeKbScope = 'all';
 let activeKbTableView = 'entities';
-let activeKbViz = 'graph';
+let activeKbViz: 'atlas' | 'graph' | 'table' = 'atlas';
 let graphEngine: InteractiveKnowledgeGraph | null = null;
+let atlasEngine: EmbeddingAtlasCanvas | null = null;
+let atlasData: AtlasPayload | null = null;
+let atlasFilters: AtlasFilterState = {
+  clusterId: null,
+  sourceType: null,
+  strategy: null,
+  date: null,
+  entity: null,
+  query: '',
+  brushIds: null,
+};
 
 async function request(path: string, init?: RequestInit) {
   const response = await fetch(base() + path, init);
@@ -505,14 +599,16 @@ function switchTab(target: string) {
   }
 }
 
-function switchKbViz(viz: 'graph' | 'table') {
+function switchKbViz(viz: 'atlas' | 'graph' | 'table') {
   activeKbViz = viz;
   document.querySelectorAll<HTMLButtonElement>('#kb-viz-switch button').forEach((b) => {
     b.classList.toggle('active', b.dataset.viz === viz);
   });
+  el('kb-viz-atlas').style.display = viz === 'atlas' ? 'block' : 'none';
   el('kb-viz-graph').style.display = viz === 'graph' ? 'block' : 'none';
   el('kb-viz-table').style.display = viz === 'table' ? 'block' : 'none';
-  if (viz === 'graph') action(refreshKnowledgeGraph);
+  if (viz === 'atlas') action(refreshEmbeddingAtlas);
+  else if (viz === 'graph') action(refreshKnowledgeGraph);
   else action(refreshKnowledgeTable);
 }
 
@@ -942,9 +1038,317 @@ async function runUnifiedKnowledgeSearch(queryText: string) {
   out.append(cols);
 }
 
+// --- EMBEDDING ATLAS LOGIC (Apple Embedding Atlas-inspired Cross-Filtering) ---
+function pointMatchesAtlasFilters(pt: AtlasPoint, ignore?: keyof AtlasFilterState): boolean {
+  if (ignore !== 'clusterId' && atlasFilters.clusterId !== null && pt.cluster_id !== atlasFilters.clusterId) return false;
+  if (ignore !== 'sourceType' && atlasFilters.sourceType && pt.source_type !== atlasFilters.sourceType) return false;
+  if (ignore !== 'strategy' && atlasFilters.strategy && pt.strategy !== atlasFilters.strategy) return false;
+  if (ignore !== 'date' && atlasFilters.date && pt.date !== atlasFilters.date) return false;
+  if (ignore !== 'entity' && atlasFilters.entity && !pt.entities.includes(atlasFilters.entity)) return false;
+  if (ignore !== 'brushIds' && atlasFilters.brushIds && !atlasFilters.brushIds.has(pt.id)) return false;
+  if (ignore !== 'query' && atlasFilters.query.trim()) {
+    const terms = atlasFilters.query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    const hay = `${pt.title} ${pt.text} ${pt.cluster_label} ${pt.entities.join(' ')} ${pt.tags.join(' ')}`.toLowerCase();
+    if (!terms.some((t) => hay.includes(t))) return false;
+  }
+  return true;
+}
+
+function renderAtlasInspector(point: AtlasPoint | null) {
+  const panel = el('atlas-inspector');
+  panel.replaceChildren();
+  const heading = document.createElement('h3');
+  heading.textContent = 'Điểm đang chọn & Nearest Neighbors';
+  panel.append(heading);
+
+  if (!point) {
+    const empty = document.createElement('p');
+    empty.className = 'hint';
+    empty.style.margin = '0';
+    empty.textContent = 'Nhấp vào một điểm trên bản đồ để xem nội dung, chứng cứ và top láng giềng gần nhất.';
+    panel.append(empty);
+    return;
+  }
+
+  const title = document.createElement('strong');
+  title.style.display = 'block';
+  title.style.fontSize = '13.5px';
+  title.style.marginBottom = '4px';
+  title.textContent = point.title;
+
+  const meta = document.createElement('div');
+  meta.className = 'meta';
+  meta.append(
+    pill(point.cluster_label, 'accent'),
+    pill(point.source_type),
+    pill(point.strategy),
+    pill(point.date)
+  );
+
+  const body = document.createElement('p');
+  body.style.fontSize = '12.5px';
+  body.style.margin = '6px 0 8px';
+  body.style.color = 'var(--ink-secondary)';
+  body.textContent = point.text;
+
+  panel.append(title, meta, body);
+
+  if (point.source_url) {
+    const dl = document.createElement('a');
+    dl.href = base() + point.source_url;
+    dl.style.fontSize = '12px';
+    dl.style.display = 'inline-block';
+    dl.style.marginBottom = '8px';
+    dl.textContent = `Tải nguồn gốc · blocks ${point.block_ids.join(', ')}`;
+    panel.append(dl);
+  }
+
+  if (point.neighbors?.length) {
+    const nh = document.createElement('div');
+    nh.style.fontSize = '11px';
+    nh.style.fontWeight = '600';
+    nh.style.color = 'var(--ink-muted)';
+    nh.style.textTransform = 'uppercase';
+    nh.style.margin = '6px 0';
+    nh.textContent = `Nearest Neighbors (${point.neighbors.length})`;
+    panel.append(nh);
+
+    const list = document.createElement('div');
+    list.style.display = 'flex';
+    list.style.flexDirection = 'column';
+    list.style.gap = '5px';
+    for (const nbr of point.neighbors) {
+      const row = document.createElement('div');
+      row.className = 'knn-row';
+      const lbl = document.createElement('span');
+      lbl.className = 'facet-row-label';
+      lbl.textContent = nbr.title;
+      const sc = document.createElement('span');
+      sc.className = 'knn-score';
+      sc.textContent = nbr.score.toFixed(3);
+      row.append(lbl, sc);
+      row.onclick = () => atlasEngine?.selectPointById(nbr.id);
+      list.append(row);
+    }
+    panel.append(list);
+  }
+}
+
+function renderFacetBars(
+  containerId: string,
+  items: { key: string | number; label: string; total: number; filtered: number; color: string; active: boolean }[],
+  onClick: (key: string | number) => void
+) {
+  const wrap = el(containerId);
+  wrap.replaceChildren();
+  const maxTotal = Math.max(1, ...items.map((i) => i.total));
+  if (!items.length) {
+    const p = document.createElement('p');
+    p.className = 'hint';
+    p.style.margin = '0';
+    p.textContent = 'Chưa có dữ liệu.';
+    wrap.append(p);
+    return;
+  }
+  for (const item of items) {
+    const row = document.createElement('div');
+    row.className = item.active ? 'facet-row active' : 'facet-row';
+    row.onclick = () => onClick(item.key);
+
+    const head = document.createElement('div');
+    head.className = 'facet-row-head';
+    const lbl = document.createElement('span');
+    lbl.className = 'facet-row-label';
+    lbl.textContent = item.label;
+    const cnt = document.createElement('span');
+    cnt.className = 'facet-row-count';
+    cnt.textContent = item.filtered === item.total ? `${item.total}` : `${item.filtered}/${item.total}`;
+    head.append(lbl, cnt);
+
+    const track = document.createElement('div');
+    track.className = 'facet-bar-track';
+    const ghost = document.createElement('div');
+    ghost.className = 'facet-bar-ghost';
+    ghost.style.width = `${(item.total / maxTotal) * 100}%`;
+    const fill = document.createElement('div');
+    fill.className = 'facet-bar-fill';
+    fill.style.background = item.color;
+    fill.style.width = `${(item.filtered / maxTotal) * 100}%`;
+    track.append(ghost, fill);
+
+    row.append(head, track);
+    wrap.append(row);
+  }
+}
+
+function renderAtlasLinkedTable(points: AtlasPoint[]) {
+  const wrap = el('atlas-linked-table');
+  wrap.replaceChildren();
+  if (!points.length) {
+    const empty = document.createElement('div');
+    empty.className = 'empty-state';
+    empty.textContent = 'Không có điểm nào khớp bộ lọc chéo hiện tại.';
+    wrap.append(empty);
+    return;
+  }
+
+  const colorBy = select('atlas-color-by').value as AtlasColorBy;
+  const table = document.createElement('table');
+  const thead = document.createElement('thead');
+  const htr = document.createElement('tr');
+  for (const label of ['Điểm tri thức', 'Cụm (Cluster)', 'Nguồn / Chiến lược', 'Ngày', 'Thực thể', 'Nội dung']) {
+    const th = document.createElement('th');
+    th.textContent = label;
+    htr.append(th);
+  }
+  thead.append(htr);
+
+  const tbody = document.createElement('tbody');
+  for (const pt of points.slice(0, 60)) {
+    const tr = document.createElement('tr');
+    tr.style.cursor = 'pointer';
+    tr.onclick = () => atlasEngine?.selectPointById(pt.id);
+
+    const tdTitle = document.createElement('td');
+    const dot = document.createElement('span');
+    dot.style.display = 'inline-block';
+    dot.style.width = '8px';
+    dot.style.height = '8px';
+    dot.style.borderRadius = '50%';
+    dot.style.background = atlasColorForPoint(pt, colorBy);
+    dot.style.marginRight = '6px';
+    const strong = document.createElement('strong');
+    strong.textContent = pt.title;
+    tdTitle.append(dot, strong);
+
+    const tdCluster = document.createElement('td');
+    tdCluster.append(pill(pt.cluster_label, 'accent'));
+
+    const tdStrat = document.createElement('td');
+    tdStrat.append(pill(pt.source_type), ' ', pill(pt.strategy));
+
+    const tdDate = document.createElement('td');
+    tdDate.textContent = pt.date;
+
+    const tdEnt = document.createElement('td');
+    const entWrap = document.createElement('div');
+    entWrap.className = 'meta';
+    entWrap.style.margin = '0';
+    for (const e of pt.entities.slice(0, 3)) entWrap.append(pill(e));
+    tdEnt.append(entWrap);
+
+    const tdPreview = document.createElement('td');
+    tdPreview.textContent = pt.preview;
+
+    tr.append(tdTitle, tdCluster, tdStrat, tdDate, tdEnt, tdPreview);
+    tbody.append(tr);
+  }
+  table.append(thead, tbody);
+  wrap.append(table);
+}
+
+function applyAtlasFilters() {
+  if (!atlasData) return;
+  const allPts = atlasData.points;
+  const activePts = allPts.filter((p) => pointMatchesAtlasFilters(p));
+  const activeIds = new Set(activePts.map((p) => p.id));
+
+  const searchMatchedIds = new Set<string>();
+  if (atlasFilters.query.trim()) {
+    const terms = atlasFilters.query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    for (const pt of allPts) {
+      const hay = `${pt.title} ${pt.text} ${pt.cluster_label} ${pt.entities.join(' ')}`.toLowerCase();
+      if (terms.some((t) => hay.includes(t))) searchMatchedIds.add(pt.id);
+    }
+  }
+
+  atlasEngine?.setFilterMask(activeIds, searchMatchedIds);
+  el('atlas-filter-status').textContent = `${activePts.length} / ${allPts.length} điểm`;
+
+  // Linked cross-filter facets
+  const clusterItems = atlasData.clusters.map((c) => ({
+    key: c.id,
+    label: c.label,
+    total: c.count,
+    filtered: activePts.filter((p) => p.cluster_id === c.id).length,
+    color: clusterColor(c.id),
+    active: atlasFilters.clusterId === c.id,
+  }));
+  renderFacetBars('atlas-facet-clusters', clusterItems, (cid) => {
+    atlasFilters.clusterId = atlasFilters.clusterId === Number(cid) ? null : Number(cid);
+    applyAtlasFilters();
+  });
+
+  const stratItems = atlasData.facets.strategies.map((s) => ({
+    key: s.label,
+    label: s.label,
+    total: s.count,
+    filtered: activePts.filter((p) => p.strategy === s.label).length,
+    color: s.label === 'document_chunk' ? '#0f766e' : '#2563eb',
+    active: atlasFilters.strategy === s.label,
+  }));
+  renderFacetBars('atlas-facet-strategies', stratItems, (strat) => {
+    atlasFilters.strategy = atlasFilters.strategy === String(strat) ? null : String(strat);
+    applyAtlasFilters();
+  });
+
+  const dateItems = atlasData.facets.dates.slice(-8).map((d) => ({
+    key: d.label,
+    label: d.label,
+    total: d.count,
+    filtered: activePts.filter((p) => p.date === d.label).length,
+    color: '#d97706',
+    active: atlasFilters.date === d.label,
+  }));
+  renderFacetBars('atlas-facet-dates', dateItems, (dt) => {
+    atlasFilters.date = atlasFilters.date === String(dt) ? null : String(dt);
+    applyAtlasFilters();
+  });
+
+  const entWrap = el('atlas-facet-entities');
+  entWrap.replaceChildren();
+  for (const e of atlasData.facets.entities) {
+    const activeCount = activePts.filter((p) => p.entities.includes(e.label)).length;
+    const isAct = atlasFilters.entity === e.label;
+    const chip = pill(`${e.label} (${activeCount})`, isAct ? 'accent clickable' : 'clickable');
+    chip.onclick = () => {
+      atlasFilters.entity = isAct ? null : e.label;
+      applyAtlasFilters();
+    };
+    entWrap.append(chip);
+  }
+
+  renderAtlasLinkedTable(activePts);
+}
+
+async function refreshEmbeddingAtlas() {
+  const canvas = document.getElementById('embedding-atlas-canvas') as HTMLCanvasElement;
+  if (!atlasEngine) {
+    atlasEngine = new EmbeddingAtlasCanvas(canvas, el('atlas-tooltip'), {
+      onSelectPoint: (pt) => renderAtlasInspector(pt),
+      onBrushChange: (ids) => {
+        atlasFilters.brushIds = ids;
+        applyAtlasFilters();
+      },
+      onClusterClick: (cid) => {
+        atlasFilters.clusterId = atlasFilters.clusterId === cid ? null : cid;
+        applyAtlasFilters();
+      },
+    });
+  }
+  const source = select('kb-source-filter').value;
+  atlasData = await request(`/knowledge/atlas?source=${encodeURIComponent(source)}`);
+  el('atlas-meta-strip').textContent = `${atlasData!.projection.toUpperCase()} · ${
+    atlasData!.used_dense_embeddings ? 'Dense + Lexical' : 'Lexical + Entity'
+  } · ${atlasData!.clusters.length} cụm tự động · KDE Contours`;
+  atlasEngine.setData(atlasData!);
+  applyAtlasFilters();
+}
+
 async function refreshKnowledge() {
   await refreshOverview();
-  if (activeKbViz === 'graph') await refreshKnowledgeGraph();
+  if (activeKbViz === 'atlas') await refreshEmbeddingAtlas();
+  else if (activeKbViz === 'graph') await refreshKnowledgeGraph();
   else await refreshKnowledgeTable();
 }
 
@@ -1116,8 +1520,15 @@ el('global-search-form').onsubmit = (event) => {
   const q = input('global-search-input').value.trim();
   if (!q) return;
   input('kb-query').value = q;
+  input('atlas-search-input').value = q;
+  atlasFilters.query = q;
   switchTab('knowledge');
   action(() => runUnifiedKnowledgeSearch(q));
+};
+
+el('btn-open-atlas').onclick = () => {
+  switchTab('knowledge');
+  switchKbViz('atlas');
 };
 
 el('btn-open-graph').onclick = () => {
@@ -1132,6 +1543,44 @@ el('btn-open-table').onclick = () => {
 
 el('btn-refresh-all').onclick = () => action(refreshAll);
 
+// Embedding Atlas controls
+el('atlas-search-input').oninput = () => {
+  atlasFilters.query = input('atlas-search-input').value;
+  applyAtlasFilters();
+};
+
+el('atlas-color-by').onchange = () => {
+  atlasEngine?.setOptions({ colorBy: select('atlas-color-by').value as AtlasColorBy });
+  applyAtlasFilters();
+};
+
+for (const btn of document.querySelectorAll<HTMLButtonElement>('#atlas-mode-switch button')) {
+  btn.onclick = () => {
+    const mode = btn.dataset.mode as AtlasInteractionMode;
+    document.querySelectorAll('#atlas-mode-switch button').forEach((b) => b.classList.toggle('active', b === btn));
+    atlasEngine?.setOptions({ mode });
+  };
+}
+
+el('atlas-contours').onchange = () => {
+  atlasEngine?.setOptions({ showContours: input('atlas-contours').checked });
+};
+
+el('atlas-labels').onchange = () => {
+  atlasEngine?.setOptions({ showLabels: input('atlas-labels').checked });
+};
+
+el('btn-atlas-zoom-in').onclick = () => atlasEngine?.zoomBy(1.25);
+el('btn-atlas-zoom-out').onclick = () => atlasEngine?.zoomBy(0.8);
+el('btn-atlas-zoom-reset').onclick = () => atlasEngine?.resetView();
+
+el('btn-atlas-clear-filters').onclick = () => {
+  atlasFilters = { clusterId: null, sourceType: null, strategy: null, date: null, entity: null, query: '', brushIds: null };
+  input('atlas-search-input').value = '';
+  atlasEngine?.resetView();
+  applyAtlasFilters();
+};
+
 // Knowledge Explorer controls
 for (const btn of document.querySelectorAll<HTMLButtonElement>('#kb-scope-control button')) {
   btn.onclick = () => {
@@ -1141,7 +1590,7 @@ for (const btn of document.querySelectorAll<HTMLButtonElement>('#kb-scope-contro
 }
 
 for (const btn of document.querySelectorAll<HTMLButtonElement>('#kb-viz-switch button')) {
-  btn.onclick = () => switchKbViz(btn.dataset.viz as 'graph' | 'table');
+  btn.onclick = () => switchKbViz(btn.dataset.viz as 'atlas' | 'graph' | 'table');
 }
 
 for (const btn of document.querySelectorAll<HTMLButtonElement>('#kb-table-views button')) {
