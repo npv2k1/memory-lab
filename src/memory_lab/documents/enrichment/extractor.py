@@ -173,8 +173,9 @@ MONTH_MAP = {
 }
 
 # Unicode-aware entity span (1 to 4 capitalized/acronym/hyphenated tokens)
-_ENT = r"[A-ZÀ-Ỹ][\wÀ-ỹ.-]*(?:\s+[A-ZÀ-Ỹ][\wÀ-ỹ.-]*){0,3}"
-_ENT_FLEX = r"[A-ZÀ-Ỹ][\wÀ-ỹ.-]*(?:\s+(?:of|for|the)?\s*[A-ZÀ-Ỹ][\wÀ-ỹ.-]*){0,3}"
+_VI_UPPER = "A-ZÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚÝĂĐĨŨƠƯẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼẾỀỂỄỆỈỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪỬỮỰỲỴỶỸ"
+_ENT = rf"[{_VI_UPPER}][\wÀ-ỹ.-]*(?:\s+[{_VI_UPPER}][\wÀ-ỹ.-]*){{0,3}}"
+_ENT_FLEX = rf"[{_VI_UPPER}][\wÀ-ỹ.-]*(?:\s+(?:of|for|the)?\s*[{_VI_UPPER}][\wÀ-ỹ.-]*){{0,3}}"
 
 RELATION_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     # Organizational & management relations (EN + VI)
@@ -210,13 +211,33 @@ RELATION_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(rf"\b({_ENT})\s+(?:stores|indexes|persists)\s+({_ENT_FLEX})\b"), "stores"),
     (re.compile(rf"\b({_ENT})\s+(?:created|built|authored|maintains|developed)\s+({_ENT_FLEX})\b"), "created"),
     (re.compile(rf"\b({_ENT})\s+(?:is a|is an|extends|implements)\s+({_ENT_FLEX})\b"), "is_a"),
+    (re.compile(rf"\b({_ENT})\s+(?:belongs to|is part of)\s+({_ENT_FLEX})\b"), "belongs_to"),
+    (re.compile(rf"\b({_ENT})\s+(?:thuộc về|thuộc)\s+({_ENT_FLEX})\b"), "belongs_to"),
     (re.compile(rf"\b({_ENT})\s+(?:sử dụng|dùng)\s+({_ENT_FLEX})\b"), "uses"),
     (re.compile(rf"\b({_ENT})\s+(?:lưu trữ|lưu)\s+({_ENT_FLEX})\b"), "stores"),
-    (re.compile(rf"\b({_ENT})\s+(?:kết nối với|kết nối)\s+({_ENT_FLEX})\b"), "integrates_with"),
+    (re.compile(rf"\b({_ENT})\s+(?:kết nối với|kết nối|tích hợp với|tích hợp)\s+({_ENT_FLEX})\b"), "integrates_with"),
     (re.compile(rf"\b({_ENT})\s+(?:phụ thuộc vào|phụ thuộc)\s+({_ENT_FLEX})\b"), "depends_on"),
+    (re.compile(rf"\b({_ENT})\s+(?:cung cấp|hỗ trợ|tạo ra)\s+({_ENT_FLEX})\b"), "uses"),
 ]
 
 PERSON_PREDICATES = frozenset({"reports_to", "manages", "works_at", "works_on", "prefers"})
+
+PREDICATE_LABELS_VI: dict[str, str] = {
+    "reports_to": "báo cáo cho",
+    "manages": "quản lý",
+    "works_at": "làm việc tại",
+    "works_on": "tham gia",
+    "deployed_on": "triển khai trên",
+    "prefers": "ưa thích",
+    "uses": "sử dụng",
+    "depends_on": "phụ thuộc",
+    "integrates_with": "tích hợp với",
+    "stores": "lưu trữ",
+    "created": "xây dựng",
+    "is_a": "là một",
+    "belongs_to": "thuộc về",
+    "co_occurs_with": "cùng ngữ cảnh",
+}
 
 
 def fold_ascii(text: str) -> str:
@@ -368,7 +389,20 @@ class NonGenerativeExtractor:
             found[norm] = Entity(name=name, normalized_name=norm, type=etype)
 
         # 4. Multi-word capitalized proper noun phrases (EN + VI)
-        for match in re.finditer(r"\b[A-ZÀ-Ỹ][a-zà-ỹ0-9]+(?:\s+[A-ZÀ-Ỹ][a-zà-ỹ0-9]+){1,3}\b", text):
+        from memory_lab.documents.enrichment.vi_tokenizer import (
+            VI_COMMON_SINGLE_SYLLABLES,
+            is_capitalized_vi_compound_head,
+            is_single_syllable_vi_noise,
+            segment_vietnamese,
+        )
+
+        # Exact Vietnamese uppercase / lowercase classes (avoiding Unicode range À-Ỹ which includes lowercase đ/ể!)
+        vi_upper = "A-ZÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚÝĂĐĨŨƠƯẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼẾỀỂỄỆỈỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪỬỮỰỲỴỶỸ"
+        vi_lower = "a-zàáâãèéêìíòóôõùúýăđĩũơưạảấầẩẫậắằẳẵặẹẻẽếềểễệỉịọỏốồổỗộớờởỡợụủứừửữựỳỵỷỹ"
+        multi_cap_re = re.compile(rf"\b[{vi_upper}][{vi_lower}0-9]+(?:\s+[{vi_upper}][{vi_lower}0-9]+){{1,3}}\b")
+        single_cap_re = re.compile(rf"[{vi_upper}][{vi_lower}]{{1,}}")
+
+        for match in multi_cap_re.finditer(text):
             raw_phrase = match.group(0).strip()
             # Trim leading sentence-starter non-entity word if phrase has >=2 words (e.g. "When Alice" -> "Alice")
             parts = raw_phrase.split()
@@ -382,6 +416,15 @@ class NonGenerativeExtractor:
             norm = normalize_name(name)
             if not norm or norm in found or norm in STOPWORDS or norm in SENTENCE_START_NON_ENTITIES:
                 continue
+            # Drop title-cased Vietnamese heading phrases where EVERY syllable is a generic word (e.g., "Quy Trình Nạp")
+            low_parts = [p.lower() for p in parts]
+            if (
+                norm not in KNOWN_TECH
+                and not any(norm.endswith(suf) for suf in ORG_SUFFIXES)
+                and not norm.startswith(("công ty ", "tập đoàn ", "project ", "dự án "))
+                and all(lp in VI_COMMON_SINGLE_SYLLABLES or lp in STOPWORDS for lp in low_parts)
+            ):
+                continue
             found[norm] = Entity(name=name, normalized_name=norm, type=_classify_phrase(name, norm))  # type: ignore[arg-type]
 
         # 5. Capitalized single proper nouns (including sentence-initial names like Alice, Bob, Nguyên)
@@ -389,7 +432,7 @@ class NonGenerativeExtractor:
             words = sentence.strip().split()
             for idx, raw_word in enumerate(words):
                 clean = _strip_possessive(raw_word.strip(",:;()[]{}\"'`"))
-                if not re.fullmatch(r"[A-ZÀ-Ỹ][a-zà-ỹ]{1,}", clean):
+                if not single_cap_re.fullmatch(clean):
                     continue
                 norm = normalize_name(clean)
                 if (
@@ -402,6 +445,10 @@ class NonGenerativeExtractor:
                     continue
                 # Sentence-initial 2-letter capitalized words are too ambiguous unless known
                 if idx == 0 and len(clean) < 3:
+                    continue
+                # Drop Vietnamese single-syllable common words & capitalized heads of Vietnamese compounds
+                # (fixes noise like "Diễn", "Kiểu", "Ca", "Bảo", "Duy", "Gửi", "Sẵn", "Bị", "Nạp", "Phiếu")
+                if is_single_syllable_vi_noise(clean) or is_capitalized_vi_compound_head(words, idx):
                     continue
                 found[norm] = Entity(name=clean, normalized_name=norm, type="concept")
 
@@ -498,37 +545,35 @@ class NonGenerativeExtractor:
         return list(relations.values())
 
     def extract_keywords(self, text: str, limit: int = 12) -> list[str]:
-        raw_tokens = re.findall(r"[^\W_]+", re.sub(r"['’]s\b", "", text.lower()), flags=re.UNICODE)
+        from memory_lab.documents.enrichment.vi_tokenizer import segment_vietnamese
+
+        units = segment_vietnamese(text)
         valid_positions: list[tuple[int, str]] = []
-        for idx, tok in enumerate(raw_tokens):
-            if len(tok) < 2 or tok.isdigit():
+        for idx, unit in enumerate(units):
+            if len(unit) < 2 or unit.isdigit():
                 continue
-            if tok in STOPWORDS or fold_ascii(tok) in STOPWORDS:
+            if unit in STOPWORDS or (" " not in unit and fold_ascii(unit) in STOPWORDS):
                 continue
-            valid_positions.append((idx, tok))
+            valid_positions.append((idx, unit))
 
         counts: Counter[str] = Counter()
-        # Score adjacent content bigrams (keeps Vietnamese compound words like "cà phê", "quản lý", "dự án")
-        bigram_tokens: set[str] = set()
-        for i in range(len(valid_positions) - 1):
-            pos_a, tok_a = valid_positions[i]
-            pos_b, tok_b = valid_positions[i + 1]
-            if pos_b == pos_a + 1 and tok_a != tok_b:
-                # Prefer bigrams when at least one token has Vietnamese diacritics or both are short syllables
-                is_vi = any(ord(ch) > 127 for ch in (tok_a + tok_b))
-                if is_vi or (len(tok_a) >= 3 and len(tok_b) >= 3):
-                    phrase = f"{tok_a} {tok_b}"
-                    counts[phrase] += 2 if is_vi else 1
-                    if is_vi:
-                        bigram_tokens.add(tok_a)
-                        bigram_tokens.add(tok_b)
-
-        for _pos, tok in valid_positions:
-            # Slightly down-weight standalone syllables already captured in a Vietnamese compound bigram
-            if tok in bigram_tokens and len(tok) <= 4:
-                counts[tok] += 1
+        for _pos, unit in valid_positions:
+            # Segmented Vietnamese compound words ("cà phê", "quy trình", "nạp nguyên liệu") score highest
+            if " " in unit:
+                counts[unit] += 3
+            elif any(ord(ch) > 127 for ch in unit) and len(unit) <= 4:
+                counts[unit] += 1
             else:
-                counts[tok] += 2
+                counts[unit] += 2
+
+        # Also score adjacent 2-unit phrases when neither is a stopword
+        for i in range(len(valid_positions) - 1):
+            pos_a, ua = valid_positions[i]
+            pos_b, ub = valid_positions[i + 1]
+            if pos_b == pos_a + 1 and ua != ub:
+                phrase = f"{ua} {ub}"
+                if len(phrase.split()) <= 3:
+                    counts[phrase] += 2 if any(ord(ch) > 127 for ch in phrase) else 1
 
         ranked: list[str] = []
         seen: set[str] = set()

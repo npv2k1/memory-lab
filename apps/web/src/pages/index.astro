@@ -4,2110 +4,2542 @@ import '../styles/app.css';
 <!doctype html>
 <html lang="vi">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <meta name="description" content="Memory Lab — Nền tảng SaaS trực quan hóa kho tri thức, đồ thị thực thể, bảng dữ liệu, bộ nhớ agent và đánh giá truy xuất."/>
-  <title>Memory Lab — Knowledge &amp; Agent Memory Platform</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@600;700&display=swap" rel="stylesheet"/>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Memory Lab — Không gian tri thức cá nhân & nhóm: hỏi đáp trên tài liệu, lưu ký ức theo dòng thời gian và khám phá chủ đề." />
+  <title>Memory Lab — Không gian tri thức</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
 </head>
 <body>
 <div class="app-shell">
-  <!-- LEFT SAAS SIDEBAR -->
+  <!-- LEFT SIDEBAR: 4 Task Screens + Settings (+ Developer Mode when enabled) -->
   <aside class="sidebar" aria-label="Điều hướng chính">
     <div class="brand">
-      <div class="brand-mark" aria-hidden="true">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="5" r="3"/><circle cx="5" cy="19" r="3"/><circle cx="19" cy="19" r="3"/>
-          <line x1="10.5" y1="7.6" x2="6.5" y2="16.4"/><line x1="13.5" y1="7.6" x2="17.5" y2="16.4"/><line x1="8" y1="19" x2="16" y2="19"/>
-        </svg>
-      </div>
+      <div class="brand-mark" aria-hidden="true">M</div>
       <div>
-        <div class="brand-title">Memory Lab</div>
-        <div class="brand-sub">Knowledge Workspace · v0.3</div>
+        <div class="brand-name">Memory Lab</div>
+        <div class="brand-sub">Không gian tri thức</div>
       </div>
     </div>
 
-    <div>
-      <div class="nav-group-label">Không gian làm việc</div>
-      <nav class="sidebar-nav" role="tablist" aria-label="Workspace tabs">
-        <button type="button" class="tab active" data-tab="documents" role="tab" aria-selected="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-          <span>Documents &amp; Pipeline</span>
-          <span class="nav-count" id="nav-count-docs">0</span>
-        </button>
+    <nav class="nav-primary" role="tablist" aria-label="Tác vụ chính">
+      <button type="button" class="nav-item is-active" data-screen="ask" role="tab" aria-selected="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <span>Hỏi</span>
+      </button>
 
-        <button type="button" class="tab" data-tab="knowledge" role="tab" aria-selected="false">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-          <span>Knowledge Explorer</span>
-          <span class="nav-count" id="nav-count-entities">0</span>
-        </button>
+      <button type="button" class="nav-item" data-screen="docs" role="tab" aria-selected="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        <span>Tài liệu</span>
+        <span class="nav-badge" id="nav-badge-docs">0</span>
+      </button>
 
-        <button type="button" class="tab" data-tab="memory" role="tab" aria-selected="false">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a8 8 0 0 0-8 8c0 3.3 2 6.2 5 7.4V20a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2v-2.6c3-1.2 5-4.1 5-7.4a8 8 0 0 0-8-8z"/></svg>
-          <span>Memory Playground</span>
-          <span class="nav-count" id="nav-count-mem">0</span>
-        </button>
+      <button type="button" class="nav-item" data-screen="memory" role="tab" aria-selected="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>
+        <span>Ký ức</span>
+        <span class="nav-badge" id="nav-badge-memory">0</span>
+      </button>
 
-        <button type="button" class="tab" data-tab="experiments" role="tab" aria-selected="false">
+      <button type="button" class="nav-item" data-screen="explore" role="tab" aria-selected="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+        <span>Khám phá</span>
+      </button>
+    </nav>
+
+    <!-- Developer Mode Nav (hidden unless enabled in Settings) -->
+    <div id="nav-dev-section" hidden>
+      <div class="nav-section-label">Nhà phát triển</div>
+      <nav class="nav-dev" aria-label="Công cụ nhà phát triển">
+        <button type="button" class="nav-item" data-screen="dev-pipeline">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+          <span>Pipeline Inspector</span>
+        </button>
+        <button type="button" class="nav-item" data-screen="dev-atlas">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="8" r="2.2"/><circle cx="17" cy="7" r="2.2"/><circle cx="11" cy="16" r="2.2"/><circle cx="18" cy="17" r="1.8"/><circle cx="6" cy="16" r="1.6"/></svg>
+          <span>Embedding Atlas</span>
+        </button>
+        <button type="button" class="nav-item" data-screen="dev-eval">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-          <span>Experiments &amp; Eval</span>
-          <span class="nav-count" id="nav-count-exp">0</span>
-        </button>
-
-        <button type="button" class="tab" data-tab="settings" role="tab" aria-selected="false">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-          <span>Embedding Settings</span>
-          <span class="nav-count" id="nav-emb-model">env</span>
+          <span>Thử nghiệm &amp; Eval</span>
         </button>
       </nav>
     </div>
 
     <div class="sidebar-footer">
-      <label class="api-box">
-        <span>API Endpoint</span>
-        <input id="api" value="/api" />
-      </label>
-      <label class="api-box">
-        <span>Tenant / Workspace</span>
-        <input id="tenant-id" placeholder="default" />
-      </label>
-      <label class="api-box">
-        <span>API Key / Bearer (Enterprise)</span>
-        <input id="api-key" type="password" placeholder="mlab_... (tùy chọn)" />
-      </label>
-      <p id="status" class="status-bar" role="status" aria-live="polite"></p>
+      <button type="button" class="nav-item" data-screen="settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span>Cài đặt</span>
+      </button>
+      <div class="conn-pill" id="conn-status" title="Trạng thái kết nối máy chủ">
+        <span class="conn-dot" id="conn-dot"></span>
+        <span id="conn-label">Đang kết nối…</span>
+      </div>
     </div>
   </aside>
 
   <!-- MAIN WORKSPACE -->
-  <div class="workspace">
-    <header class="topbar">
-      <form id="global-search-form" class="global-search" role="search">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input id="global-search-input" placeholder="Tìm kiếm nhanh toàn bộ kho tri thức (tài liệu, ký ức, thực thể, quan hệ)…" />
-        <span class="kbd">⌘K</span>
-        <button type="submit" class="sm">Tìm</button>
-      </form>
-      <div class="topbar-actions">
-        <button type="button" class="sm" id="btn-open-atlas">Embedding Atlas</button>
-        <button type="button" class="secondary sm" id="btn-open-graph">Đồ thị tri thức</button>
-        <button type="button" class="secondary sm" id="btn-open-table">Bảng tri thức</button>
-        <button type="button" class="secondary sm" id="btn-refresh-all">Đồng bộ</button>
-      </div>
-    </header>
+  <main class="main-area">
+    <!-- ==================== SCREEN 1: HỎI (TRANG CHỦ) ==================== -->
+    <section id="screen-ask" class="screen">
+      <div id="ask-hero" class="ask-hero">
+        <h1 class="ask-heading">Bạn muốn tìm gì trong kho tri thức?</h1>
+        <p class="ask-sub">Tìm kiếm hợp nhất trên toàn bộ tài liệu và ký ức đã lưu, kèm đoạn trích nguyên văn.</p>
 
-    <main class="workspace-content">
-      <!-- KPI OVERVIEW STRIP -->
+        <form id="ask-form" class="ask-search-box" role="search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input id="ask-input" class="ask-input" type="search" autocomplete="off" placeholder="Đặt câu hỏi hoặc gõ từ khóa… (VD: quy trình nạp nguyên liệu, cấu hình PostgreSQL)" />
+          <span class="kbd-hint">⌘K</span>
+          <button type="submit" class="btn btn-primary btn-sm">Tìm kiếm</button>
+        </form>
+
+        <div class="ask-filters">
+          <button type="button" class="chip is-active" data-ask-scope="all">Tất cả</button>
+          <button type="button" class="chip" data-ask-scope="documents">Tài liệu</button>
+          <button type="button" class="chip" data-ask-scope="memory">Ký ức</button>
+
+          <select id="ask-time-filter" class="filter-select" aria-label="Lọc theo thời gian">
+            <option value="">Thời gian: Tất cả</option>
+          </select>
+
+          <select id="ask-doc-filter" class="filter-select" aria-label="Lọc theo tài liệu cụ thể">
+            <option value="">Tài liệu: Tất cả</option>
+          </select>
+        </div>
+
+        <!-- Only visible in Developer Mode -->
+        <div id="ask-dev-controls" class="dev-inline-bar" hidden>
+          <strong>Chế độ nhà phát triển:</strong>
+          <label>
+            Tài liệu:
+            <select id="ask-dev-doc-mode" class="filter-select">
+              <option value="hybrid" selected>Hybrid (RRF)</option>
+              <option value="dense">Dense Vector</option>
+              <option value="sparse">Sparse BM25</option>
+            </select>
+          </label>
+          <label>
+            Ký ức:
+            <select id="ask-dev-mem-strategy" class="filter-select">
+              <option value="hybrid" selected>Hybrid</option>
+              <option value="vector">Vector</option>
+              <option value="graph">Graph</option>
+              <option value="zero_token">Zero-token</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <!-- Idle State: Recent Documents & Recent Memories -->
+      <div id="ask-idle">
+        <div class="ask-recent-grid">
+          <div>
+            <div class="recent-col-title">
+              <span>Tài liệu gần đây</span>
+              <button type="button" class="btn btn-ghost btn-sm" id="btn-goto-docs-from-ask">Xem tất cả →</button>
+            </div>
+            <div id="ask-recent-docs" class="recent-list"></div>
+          </div>
+          <div>
+            <div class="recent-col-title">
+              <span>Ký ức gần đây</span>
+              <button type="button" class="btn btn-ghost btn-sm" id="btn-goto-mem-from-ask">Xem tất cả →</button>
+            </div>
+            <div id="ask-recent-memories" class="recent-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Search Results -->
+      <div id="ask-results-wrap" hidden>
+        <div class="ask-results-meta">
+          <span id="ask-results-summary"></span>
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-clear-ask">Xoá tìm kiếm</button>
+        </div>
+        <div id="ask-results-list" class="ask-results-list"></div>
+      </div>
+    </section>
+
+    <!-- ==================== SCREEN 2: TÀI LIỆU ==================== -->
+    <section id="screen-docs" class="screen" hidden>
+      <!-- Document List View -->
+      <div id="docs-list-view">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Tài liệu</h1>
+            <p class="page-subtitle">Thả tài liệu vào để hệ thống tự động đọc, chia đoạn và lập chỉ mục trong nền.</p>
+          </div>
+          <button type="button" class="btn btn-primary" id="btn-pick-files">
+            + Tải tài liệu lên
+          </button>
+        </div>
+
+        <div id="doc-dropzone" class="dropzone" tabindex="0" role="button" aria-label="Kéo thả tài liệu vào đây hoặc bấm để chọn tệp">
+          <input id="doc-file-input" type="file" multiple hidden accept=".pdf,.docx,.txt,.md,.markdown,.html,.htm,.pptx,.xlsx,.csv" />
+          <div class="dropzone-icon" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          </div>
+          <div class="dropzone-title">Kéo thả tài liệu vào đây, hoặc bấm để chọn tệp</div>
+          <div class="dropzone-sub">Hỗ trợ PDF, DOCX, Markdown, TXT, HTML. Tài liệu sẽ tự động được xử lý ngay sau khi tải lên.</div>
+        </div>
+
+        <div id="docs-list" class="doc-list"></div>
+      </div>
+
+      <!-- Document Reading Detail View -->
+      <div id="docs-detail-view" hidden>
+        <div class="page-header">
+          <div>
+            <button type="button" class="btn btn-ghost btn-sm" id="btn-back-docs" style="margin-bottom:8px;padding-left:0;">← Quay lại danh sách tài liệu</button>
+            <h1 class="page-title" id="doc-detail-title">Chi tiết tài liệu</h1>
+            <p class="page-subtitle" id="doc-detail-meta"></p>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <a id="doc-detail-download" class="btn btn-sm" href="#" download>Tải xuống</a>
+            <button type="button" class="btn btn-sm" id="doc-detail-reprocess">Xử lý lại</button>
+          </div>
+        </div>
+
+        <div id="doc-detail-dev-bar" class="dev-inline-bar" style="margin-bottom:18px;" hidden>
+          <span id="doc-detail-dev-meta" style="font-family:var(--font-mono);font-size:12px;"></span>
+          <button type="button" class="btn btn-sm" id="btn-open-in-inspector">Mở trong Pipeline Inspector</button>
+        </div>
+
+        <div class="doc-detail-layout">
+          <aside class="doc-detail-aside">
+            <div class="aside-card">
+              <h3 class="aside-title">Mục lục</h3>
+              <div id="doc-detail-toc" class="toc-list"></div>
+            </div>
+            <div class="aside-card">
+              <h3 class="aside-title">Chủ đề chính</h3>
+              <div id="doc-detail-topics" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+            </div>
+            <div class="aside-card">
+              <h3 class="aside-title">Thực thể nổi bật</h3>
+              <div id="doc-detail-entities" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+            </div>
+          </aside>
+          <div id="doc-detail-chunks" class="doc-prose-stream"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== SCREEN 3: KÝ ỨC ==================== -->
+    <section id="screen-memory" class="screen" hidden>
       <div class="page-header">
         <div>
-          <h1 id="page-title">Kho tri thức &amp; Pipeline tài liệu</h1>
-          <p class="page-subtitle" id="page-subtitle">Nạp tài liệu, xử lý trích xuất phi-LLM, kiểm tra stage cache và trực quan hóa tri thức hợp nhất.</p>
+          <h1 class="page-title">Ký ức</h1>
+          <p class="page-subtitle">Ghi chú nhanh thông tin quan trọng và xem lại theo dòng thời gian.</p>
         </div>
       </div>
 
-      <section class="kpi-strip" aria-label="Thống kê kho tri thức">
-        <div class="kpi-item"><div class="kpi-label">Tài liệu</div><div class="kpi-value" id="kpi-docs">0</div></div>
-        <div class="kpi-item"><div class="kpi-label">Đoạn tri thức (Chunks)</div><div class="kpi-value" id="kpi-chunks">0</div></div>
-        <div class="kpi-item"><div class="kpi-label">Ký ức Agent</div><div class="kpi-value" id="kpi-memories">0</div></div>
-        <div class="kpi-item"><div class="kpi-label">Thực thể (Nodes)</div><div class="kpi-value" id="kpi-entities">0</div></div>
-        <div class="kpi-item"><div class="kpi-label">Quan hệ (Edges)</div><div class="kpi-value" id="kpi-relations">0</div></div>
-        <div class="kpi-item"><div class="kpi-label">Mốc thời gian</div><div class="kpi-value" id="kpi-temporal">0</div></div>
-      </section>
-
-      <!-- TAB 1: DOCUMENTS & PIPELINE (Active by default — preserves all Phase 1 E2E selectors) -->
-      <div id="tab-documents" class="tab-panel active">
-        <section class="card">
-          <div class="card-head">
-            <h2>1. Tài liệu nguồn</h2>
-            <span class="pill accent">Filesystem Source of Truth</span>
-          </div>
-          <form id="upload" class="row-form">
-            <input type="file" id="file" accept=".pdf,.docx,.md,.txt,.html" required/>
-            <input id="upload-doc-id" placeholder="Optional document_id UUID (nhóm version mới)" />
-            <button type="submit">Upload</button>
-          </form>
-          <div id="documents"></div>
-        </section>
-
-        <section class="card">
-          <div class="card-head">
-            <h2>2. Pipeline inspector &amp; Stage cache</h2>
-            <span class="pill">Non-Generative Enrichment</span>
-          </div>
-          <p class="hint">Chọn Process (đồng bộ) hoặc Process (Background) để theo dõi tiến trình 5 bước theo thời gian thực. PDF/DOCX dùng Docling; TXT/Markdown dùng text.</p>
-          <div class="controls">
-            <label>Parser <select id="parser"><option value="docling">docling</option><option value="text">text</option></select></label>
-            <label>Chunker <select id="chunker"><option value="fixed">fixed</option><option value="hybrid">hybrid</option></select></label>
-            <label>Chunk size <input id="chunk-size" type="number" value="1200" min="100" max="10000" style="width:92px"/></label>
-            <label>Overlap <input id="chunk-overlap" type="number" value="150" min="0" style="width:80px"/></label>
-            <label><input id="enrich-toggle" type="checkbox" checked/> Enrichment</label>
-          </div>
-          <div id="pipeline-progress" style="display:none"></div>
-          <div id="runs"></div>
-          <pre id="artifact">Chọn artifact để xem.</pre>
-        </section>
-
-        <section class="card">
-          <div class="card-head">
-            <h2>3. Retrieval playground</h2>
-            <span class="pill">Dense · BM25 · Hybrid RRF</span>
-          </div>
-          <form id="search" class="row-form">
-            <input id="query" placeholder="Nội dung cần tìm trong tài liệu…" required/>
-            <select id="search-mode" aria-label="Search mode">
-              <option value="dense">dense</option>
-              <option value="sparse">sparse (BM25)</option>
-              <option value="hybrid">hybrid (RRF)</option>
-            </select>
-            <input id="filter-doc-id" placeholder="Filter document_id" style="width:170px"/>
-            <input id="filter-run-id" placeholder="Filter pipeline_run_id" style="width:170px"/>
-            <button type="submit">Tìm kiếm</button>
-          </form>
-          <div id="results"></div>
-        </section>
-      </div>
-
-      <!-- TAB 2: KNOWLEDGE EXPLORER (Unified Human Search + Interactive Graph + Knowledge Tables) -->
-      <div id="tab-knowledge" class="tab-panel">
-        <!-- Unified Human Search -->
-        <section class="card">
-          <div class="card-head">
-            <h2>Tìm kiếm tri thức hợp nhất (Human Search)</h2>
-            <div class="segmented" id="kb-scope-control">
-              <button type="button" class="active" data-scope="all">Tất cả</button>
-              <button type="button" data-scope="documents">Tài liệu</button>
-              <button type="button" data-scope="memory">Ký ức</button>
-            </div>
-          </div>
-          <form id="kb-search-form" class="row-form">
-            <input id="kb-query" placeholder="Nhập từ khóa, thực thể, mã lỗi, hoặc câu hỏi tiếng Việt / tiếng Anh…" required/>
-            <select id="kb-doc-mode" aria-label="Document search mode">
-              <option value="hybrid">Docs: hybrid (RRF)</option>
-              <option value="sparse">Docs: sparse (BM25)</option>
-              <option value="dense">Docs: dense</option>
-            </select>
-            <select id="kb-mem-strategy" aria-label="Memory strategy">
-              <option value="hybrid">Memory: hybrid</option>
-              <option value="zero_token">Memory: zero_token</option>
-              <option value="graph">Memory: graph</option>
-              <option value="vector">Memory: vector</option>
-            </select>
-            <input id="kb-temporal" placeholder="Mốc YYYY-MM" style="width:130px"/>
-            <button type="submit">Tìm tri thức</button>
-          </form>
-          <div id="kb-search-meta" class="meta"></div>
-          <div id="kb-search-entities" class="meta"></div>
-          <div id="kb-search-results"></div>
-        </section>
-
-        <!-- Interactive Visualization Switcher: Embedding Atlas, Graph & Table -->
-        <section class="card">
-          <div class="card-head">
-            <h2>Trực quan hóa Kho tri thức</h2>
-            <div class="controls">
-              <div class="segmented" id="kb-viz-switch">
-                <button type="button" class="active" data-viz="atlas">Embedding Atlas</button>
-                <button type="button" data-viz="graph">Đồ thị tri thức</button>
-                <button type="button" data-viz="table">Bảng dữ liệu</button>
-              </div>
-              <select id="kb-source-filter" aria-label="Source filter">
-                <option value="all">Nguồn: Tất cả</option>
-                <option value="documents">Chỉ Tài liệu</option>
-                <option value="memory">Chỉ Ký ức</option>
-              </select>
-            </div>
-          </div>
-
-          <!-- EMBEDDING ATLAS VIEW (Apple Embedding Atlas-inspired) -->
-          <div id="kb-viz-atlas">
-            <div class="controls" style="justify-content:space-between">
-              <div class="controls">
-                <input id="atlas-search-input" placeholder="Tìm & highlight trên Embedding Atlas…" style="min-width:230px"/>
-                <label>Màu theo
-                  <select id="atlas-color-by">
-                    <option value="cluster">Cụm tự động (Cluster)</option>
-                    <option value="source_type">Nguồn (Document / Memory)</option>
-                    <option value="strategy">Chiến lược (Strategy)</option>
-                    <option value="session_id">Session / Tài liệu</option>
-                  </select>
-                </label>
-                <div class="segmented" id="atlas-mode-switch">
-                  <button type="button" class="active" data-mode="pan">Pan / Chọn điểm</button>
-                  <button type="button" data-mode="brush">Quét vùng (Brush)</button>
-                </div>
-                <label><input id="atlas-contours" type="checkbox" checked/> Density Contours</label>
-                <label><input id="atlas-labels" type="checkbox" checked/> Cluster Labels</label>
-              </div>
-              <div class="controls">
-                <span class="pill accent" id="atlas-filter-status">0 / 0 điểm</span>
-                <button type="button" class="secondary sm" id="btn-atlas-clear-filters">Xóa bộ lọc</button>
-              </div>
-            </div>
-
-            <div class="atlas-layout">
-              <div class="atlas-stage-wrap">
-                <div class="graph-toolbar">
-                  <button type="button" class="secondary sm" id="btn-atlas-zoom-in" title="Phóng to">+</button>
-                  <button type="button" class="secondary sm" id="btn-atlas-zoom-out" title="Thu nhỏ">−</button>
-                  <button type="button" class="secondary sm" id="btn-atlas-zoom-reset" title="Đặt lại">Reset</button>
-                </div>
-                <canvas id="embedding-atlas-canvas" aria-label="Bản đồ Embedding Atlas 2D tương tác"></canvas>
-                <div id="atlas-tooltip" class="atlas-tooltip"></div>
-                <div class="atlas-meta-strip" id="atlas-meta-strip">SVD + kNN · KDE Contours</div>
-              </div>
-
-              <aside class="atlas-sidebar" aria-label="Bộ lọc chéo và chi tiết điểm">
-                <div class="facet-card" id="atlas-inspector">
-                  <h3>Điểm đang chọn &amp; Nearest Neighbors</h3>
-                  <p class="hint" style="margin:0">Nhấp vào một điểm trên bản đồ để xem nội dung, chứng cứ và top láng giềng gần nhất.</p>
-                </div>
-                <div class="facet-card">
-                  <h3>Cụm tri thức (Auto Clusters)</h3>
-                  <div id="atlas-facet-clusters"></div>
-                </div>
-                <div class="facet-card">
-                  <h3>Nguồn &amp; Chiến lược</h3>
-                  <div id="atlas-facet-strategies"></div>
-                </div>
-                <div class="facet-card">
-                  <h3>Phân bố thời gian</h3>
-                  <div id="atlas-facet-dates"></div>
-                </div>
-                <div class="facet-card">
-                  <h3>Thực thể nổi bật</h3>
-                  <div id="atlas-facet-entities" class="meta" style="margin:0"></div>
-                </div>
-              </aside>
-            </div>
-
-            <div style="margin-top:16px">
-              <div class="card-head" style="margin-bottom:6px">
-                <h3>Bảng dữ liệu liên kết theo vùng chọn (Cross-Filtered Table)</h3>
-                <span class="hint" style="margin:0">Nhấp vào một dòng để phóng tới điểm tương ứng trên Embedding Atlas.</span>
-              </div>
-              <div id="atlas-linked-table" class="table-wrap"></div>
-            </div>
-          </div>
-
-          <!-- GRAPH VIEW -->
-          <div id="kb-viz-graph" style="display:none">
-            <div class="controls">
-              <input id="kb-graph-entity" placeholder="Tập trung theo thực thể (vd: Qdrant, Neo4j)…" style="min-width:260px"/>
-              <label><input id="kb-graph-cooccur" type="checkbox" checked/> Hiện quan hệ đồng xuất hiện</label>
-              <button type="button" id="btn-kb-graph-apply">Cập nhật đồ thị</button>
-              <button type="button" class="secondary" id="btn-kb-graph-clear">Xem toàn bộ</button>
-            </div>
-
-            <div class="graph-layout">
-              <div class="graph-stage-wrap">
-                <div class="graph-toolbar">
-                  <button type="button" class="secondary sm" id="btn-zoom-in" title="Phóng to">+</button>
-                  <button type="button" class="secondary sm" id="btn-zoom-out" title="Thu nhỏ">−</button>
-                  <button type="button" class="secondary sm" id="btn-zoom-reset" title="Đặt lại">Reset</button>
-                </div>
-                <svg id="knowledge-graph-svg" role="img" aria-label="Đồ thị tri thức tương tác"></svg>
-                <div class="graph-legend">
-                  <span class="legend-dot"><i style="background:#0e7490"></i>Technology</span>
-                  <span class="legend-dot"><i style="background:#3b5998"></i>Organization</span>
-                  <span class="legend-dot"><i style="background:#146c43"></i>Concept</span>
-                  <span class="legend-dot"><i style="background:#b45309"></i>Person / Date</span>
-                </div>
-              </div>
-
-              <aside class="graph-inspector" id="kb-graph-inspector" aria-label="Chi tiết thực thể">
-                <div class="inspector-empty">Nhấp vào một nút trên đồ thị để xem thông tin chi tiết, quan hệ liên kết và nguồn chứng cứ.</div>
-              </aside>
-            </div>
-          </div>
-
-          <!-- TABLE VIEW -->
-          <div id="kb-viz-table" style="display:none">
-            <div class="controls" style="justify-content:space-between; margin-bottom:10px">
-              <div class="segmented" id="kb-table-views">
-                <button type="button" class="active" data-view="entities">Thực thể</button>
-                <button type="button" data-view="relations">Quan hệ</button>
-                <button type="button" data-view="chunks">Đoạn tài liệu</button>
-                <button type="button" data-view="memories">Ký ức</button>
-                <button type="button" data-view="timeline">Dòng thời gian</button>
-              </div>
-              <form id="kb-table-filter-form" class="controls" style="flex:1; justify-content:flex-end">
-                <input id="kb-table-filter" placeholder="Lọc nhanh trong bảng…"/>
-                <button type="submit" class="secondary">Lọc</button>
-              </form>
-            </div>
-            <div id="kb-table-summary" class="hint"></div>
-            <div id="kb-table-container" class="table-wrap"></div>
-          </div>
-        </section>
-      </div>
-
-      <!-- TAB 3: MEMORY PLAYGROUND (Preserves all Phase 2 & 3 E2E selectors) -->
-      <div id="tab-memory" class="tab-panel">
-        <div class="grid-2">
-          <section class="card">
-            <div class="card-head">
-              <h2>Lưu ký ức / Interaction trace</h2>
-              <span class="pill accent">MCP Ready</span>
-            </div>
-            <form id="mem-store-form" class="stack-form">
-              <textarea id="mem-content" rows="4" placeholder="Ví dụ: Memory Lab uses Qdrant and Neo4j for hybrid retrieval since 2026-11-25." required></textarea>
-              <div class="controls">
-                <label>Strategy
-                  <select id="mem-store-strategy">
-                    <option value="hybrid">hybrid</option>
-                    <option value="zero_token">zero_token</option>
-                    <option value="graph">graph</option>
-                    <option value="vector">vector</option>
-                  </select>
-                </label>
-                <label>Session <input id="mem-session" value="default" style="width:120px"/></label>
-                <label>Role
-                  <select id="mem-role">
-                    <option value="user">user</option>
-                    <option value="assistant">assistant</option>
-                    <option value="system">system</option>
-                    <option value="tool">tool</option>
-                  </select>
-                </label>
-                <label>Tags <input id="mem-tags" placeholder="rag, architecture"/></label>
-              </div>
-              <button type="submit">Store memory</button>
-            </form>
-          </section>
-
-          <section class="card">
-            <div class="card-head">
-              <h2>Tìm kiếm Memory</h2>
-              <span class="pill">RRF Score Breakdown</span>
-            </div>
-            <form id="mem-search-form" class="stack-form">
-              <input id="mem-query" placeholder="Truy vấn ký ức…" required/>
-              <div class="controls">
-                <label>Strategy
-                  <select id="mem-search-strategy">
-                    <option value="hybrid">hybrid</option>
-                    <option value="zero_token">zero_token</option>
-                    <option value="graph">graph</option>
-                    <option value="vector">vector</option>
-                  </select>
-                </label>
-                <label>Session <input id="mem-search-session" placeholder="all" style="width:104px"/></label>
-                <label>Temporal <input id="mem-search-temporal" placeholder="YYYY-MM-DD" style="width:120px"/></label>
-                <label>Limit <input id="mem-search-limit" type="number" value="5" min="1" max="50" style="width:68px"/></label>
-              </div>
-              <button type="submit">Search memory</button>
-            </form>
-            <div id="mem-results"></div>
-          </section>
+      <form id="memory-form" class="memory-composer">
+        <textarea id="memory-input" class="textarea" rows="3" placeholder="Ghi nhớ điều gì đó… (VD: Cuộc họp với đội vận hành thống nhất chuyển PostgreSQL sang cụm riêng vào tháng 12)" required></textarea>
+        <div class="composer-actions">
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-toggle-mem-opts">Tuỳ chọn ▾</button>
+          <button type="submit" class="btn btn-primary">Lưu ký ức</button>
         </div>
 
-        <section class="card">
-          <div class="card-head">
-            <h2>Memory Records, Temporal Hierarchy &amp; Knowledge Graph</h2>
-            <div class="controls">
-              <button type="button" class="secondary" id="btn-refresh-mem">Làm mới</button>
-              <input id="graph-entity-filter" placeholder="Lọc entity trong Graph…" />
-              <button type="button" class="secondary" id="btn-filter-graph">Xem Graph</button>
-            </div>
+        <div id="memory-options-panel" class="composer-options" hidden>
+          <div>
+            <label class="field-label" for="mem-opt-session">Phiên (Session)</label>
+            <input id="mem-opt-session" class="input" value="default" placeholder="default" />
           </div>
-          <div class="grid-3">
-            <div>
-              <h3>Records (<span id="mem-record-count">0</span>)</h3>
-              <div id="mem-records"></div>
-            </div>
-            <div>
-              <h3>Temporal Hierarchy</h3>
-              <pre id="mem-temporal" class="compact-pre">Chưa có dữ liệu.</pre>
-            </div>
-            <div>
-              <h3>Knowledge Graph (JSON)</h3>
-              <pre id="mem-graph" class="compact-pre">Chưa có dữ liệu.</pre>
-            </div>
+          <div>
+            <label class="field-label" for="mem-opt-tags">Nhãn (phân cách bằng dấu phẩy)</label>
+            <input id="mem-opt-tags" class="input" placeholder="hạ tầng, quyết định" />
           </div>
-        </section>
+          <div>
+            <label class="field-label" for="mem-opt-role">Vai trò</label>
+            <select id="mem-opt-role" class="select">
+              <option value="user" selected>Người dùng</option>
+              <option value="assistant">Trợ lý</option>
+              <option value="system">Hệ thống</option>
+            </select>
+          </div>
+          <div id="mem-opt-strategy-wrap" hidden>
+            <label class="field-label" for="mem-opt-strategy">Chiến lược (Nhà phát triển)</label>
+            <select id="mem-opt-strategy" class="select">
+              <option value="hybrid" selected>Hybrid</option>
+              <option value="vector">Vector</option>
+              <option value="graph">Graph</option>
+              <option value="zero_token">Zero-token</option>
+            </select>
+          </div>
+        </div>
+      </form>
+
+      <div class="memory-filters">
+        <input id="mem-filter-q" class="input" style="max-width:280px;" type="search" placeholder="Lọc nhanh ký ức…" />
+        <select id="mem-filter-session" class="filter-select">
+          <option value="">Phiên: Tất cả</option>
+        </select>
+        <select id="mem-filter-tag" class="filter-select">
+          <option value="">Nhãn: Tất cả</option>
+        </select>
+        <select id="mem-filter-entity" class="filter-select">
+          <option value="">Thực thể: Tất cả</option>
+        </select>
+        <button type="button" class="btn btn-ghost btn-sm" id="btn-clear-mem-filters" hidden>Xoá bộ lọc</button>
       </div>
 
-      <!-- TAB 4: EXPERIMENTATION & COMPARISON (Preserves all Phase 4 E2E selectors) -->
-      <div id="tab-experiments" class="tab-panel">
-        <div class="grid-2">
-          <section class="card">
-            <div class="card-head">
-              <h2>1. Benchmark Datasets</h2>
-              <span class="pill">Content-Addressed Hash</span>
-            </div>
-            <form id="exp-dataset-form" class="stack-form">
-              <input id="exp-ds-name" placeholder="Tên dataset (vd: core-retrieval-v1)" required/>
-              <input id="exp-ds-desc" placeholder="Mô tả ngắn"/>
-              <textarea id="exp-ds-cases" rows="5" placeholder='[{"query": "evidence", "relevant_substrings": ["Memory Lab"]}]' required></textarea>
-              <div class="controls">
-                <button type="submit">Tạo dataset</button>
-                <button type="button" class="secondary" id="btn-ds-sample">Chèn mẫu JSON</button>
-              </div>
-            </form>
-            <div id="exp-datasets"></div>
-          </section>
+      <div id="memory-timeline"></div>
+    </section>
 
-          <section class="card">
-            <div class="card-head">
-              <h2>2. Chạy Benchmark Experiment</h2>
-              <span class="pill">Recall@K · MRR · nDCG@K</span>
-            </div>
-            <form id="exp-run-form" class="stack-form">
-              <input id="exp-run-name" placeholder="Tên cấu hình (vd: hybrid-rrf-k5)" required/>
-              <div class="controls">
-                <label>Dataset <select id="exp-run-dataset"></select></label>
-                <label>Target
-                  <select id="exp-run-target">
-                    <option value="documents">documents</option>
-                    <option value="memory">memory</option>
-                  </select>
-                </label>
-                <label>K <input id="exp-run-k" type="number" value="5" min="1" max="50" style="width:68px"/></label>
-              </div>
-              <div class="controls">
-                <label>Doc mode
-                  <select id="exp-run-mode">
-                    <option value="dense">dense</option>
-                    <option value="sparse">sparse</option>
-                    <option value="hybrid">hybrid</option>
-                  </select>
-                </label>
-                <label>Memory strategy
-                  <select id="exp-run-strategy">
-                    <option value="hybrid">hybrid</option>
-                    <option value="zero_token">zero_token</option>
-                    <option value="graph">graph</option>
-                    <option value="vector">vector</option>
-                  </select>
-                </label>
-              </div>
-              <div class="controls">
-                <input id="exp-run-doc-filter" placeholder="Filter document_id (tùy chọn)"/>
-                <input id="exp-run-run-filter" placeholder="Filter pipeline_run_id (tùy chọn)"/>
-              </div>
-              <button type="submit">Chạy đánh giá (Recall@K / MRR / nDCG)</button>
-            </form>
-          </section>
+    <!-- ==================== SCREEN 4: KHÁM PHÁ ==================== -->
+    <section id="screen-explore" class="screen screen-wide" hidden>
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Khám phá</h1>
+          <p class="page-subtitle" id="explore-subtitle">Kho tri thức của bạn đang nói về những chủ đề nào?</p>
+        </div>
+        <div class="segmented" role="tablist" aria-label="Chế độ khám phá">
+          <button type="button" class="is-active" data-explore-view="topics">Bản đồ chủ đề</button>
+          <button type="button" data-explore-view="ego">Đồ thị thực thể</button>
+          <button type="button" data-explore-view="table">Bảng thực thể</button>
+        </div>
+      </div>
+
+      <!-- 4a. Bản đồ chủ đề (Treemap) -->
+      <div id="explore-view-topics">
+        <div class="explore-toolbar">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button type="button" class="chip is-active" data-topic-source="all">Tất cả nguồn</button>
+            <button type="button" class="chip" data-topic-source="documents">Chỉ tài liệu</button>
+            <button type="button" class="chip" data-topic-source="memory">Chỉ ký ức</button>
+          </div>
+          <span id="topic-summary-meta" style="font-size:13px;color:var(--ink-muted);"></span>
         </div>
 
-        <section class="card">
-          <div class="card-head">
-            <h2>3. Comparison UI (Recall@K · MRR · nDCG@K · Latency)</h2>
-            <button type="button" id="btn-compare">So sánh các báo cáo đã chọn</button>
-          </div>
-          <div id="exp-reports"></div>
-          <div id="exp-comparison"></div>
-        </section>
+        <div class="topic-layout">
+          <div id="topic-treemap-container" class="treemap-box"></div>
+          <aside id="topic-detail-panel" class="topic-detail-panel">
+            <div class="empty-state" style="padding:28px 12px;">
+              <div class="empty-title">Chọn một chủ đề trên bản đồ</div>
+              <p class="empty-sub">Bấm vào một ô chủ đề để xem các đoạn văn tiêu biểu và thực thể chính trong chủ đề đó.</p>
+            </div>
+          </aside>
+        </div>
       </div>
 
-      <!-- TAB 5: EMBEDDING PROVIDER SETTINGS (Runtime Hot-Swap without Container Restart) -->
-      <div id="tab-settings" class="tab-panel">
-        <section class="card">
-          <div class="card-head">
-            <h2>Cấu hình Embedding Provider (Runtime Hot-Swap)</h2>
-            <span class="pill accent" id="emb-active-source">env</span>
+      <!-- 4b. Đồ thị thực thể (Ego Graph) -->
+      <div id="explore-view-ego" hidden>
+        <div class="ego-controls">
+          <form id="ego-search-form" style="display:flex;gap:8px;flex:1;min-width:260px;max-width:440px;">
+            <input id="ego-entity-input" class="input" list="ego-entity-datalist" placeholder="Chọn hoặc nhập tên thực thể (VD: PostgreSQL, Alice)…" />
+            <datalist id="ego-entity-datalist"></datalist>
+            <button type="submit" class="btn btn-primary btn-sm">Xem liên kết</button>
+          </form>
+
+          <select id="ego-type-filter" class="filter-select" aria-label="Lọc loại thực thể">
+            <option value="">Loại: Tất cả</option>
+            <option value="person">Người</option>
+            <option value="organization">Tổ chức</option>
+            <option value="technology">Công nghệ</option>
+            <option value="location">Địa điểm</option>
+            <option value="concept">Khái niệm</option>
+          </select>
+
+          <button type="button" class="btn btn-sm" id="btn-ego-depth" data-depth="1">Mở rộng bước 2</button>
+
+          <label style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--ink-secondary);cursor:pointer;">
+            <input type="checkbox" id="ego-show-cooccur" />
+            <span id="ego-cooccur-label">Hiện liên kết cùng ngữ cảnh (≥ 3 lần)</span>
+          </label>
+        </div>
+
+        <div id="ego-suggestions" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:14px;"></div>
+
+        <div class="ego-layout">
+          <div class="ego-stage-card">
+            <div id="ego-stage" class="ego-stage-inner">
+              <div class="empty-state" style="padding-top:160px;">
+                <div class="empty-title">Chọn một thực thể để xem mối liên kết xung quanh</div>
+                <p class="empty-sub">Đồ thị chỉ tập trung vào tối đa 15 thực thể liên quan trực tiếp để luôn rõ ràng và dễ đọc.</p>
+              </div>
+            </div>
+            <div id="ego-tooltip" class="viz-tooltip" hidden></div>
+            <div class="ego-zoom-bar">
+              <button type="button" class="btn btn-ghost btn-sm" id="btn-ego-zoom-in" title="Phóng to">+</button>
+              <button type="button" class="btn btn-ghost btn-sm" id="btn-ego-zoom-out" title="Thu nhỏ">−</button>
+              <button type="button" class="btn btn-ghost btn-sm" id="btn-ego-reset" title="Đặt lại góc nhìn">Đặt lại</button>
+            </div>
           </div>
-          <p class="hint">Chuyển đổi model embedding trực tiếp không cần restart container. Khuyên dùng <strong>Ollama · bge-m3</strong> hoặc <strong>OpenAI · text-embedding-3-small</strong> cho tìm kiếm đa ngôn ngữ Việt–Anh.</p>
 
-          <div id="emb-active-summary" class="meta" style="margin-bottom:16px"></div>
+          <aside id="ego-inspector" class="topic-detail-panel">
+            <div class="empty-state" style="padding:28px 12px;">
+              <div class="empty-title">Thông tin quan hệ</div>
+              <p class="empty-sub">Chọn một thực thể phía trên hoặc bấm vào bất kỳ nút nào trên đồ thị để xem chi tiết chứng cứ.</p>
+            </div>
+          </aside>
+        </div>
+      </div>
 
-          <h3>1. Chọn nhanh Preset</h3>
-          <div id="emb-presets" class="preset-grid"></div>
+      <!-- 4c. Bảng thực thể -->
+      <div id="explore-view-table" hidden>
+        <div class="explore-toolbar">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex:1;">
+            <input id="ent-table-q" class="input" style="max-width:280px;" type="search" placeholder="Tìm thực thể hoặc câu chứng cứ…" />
+            <select id="ent-table-type" class="filter-select">
+              <option value="">Loại: Tất cả</option>
+              <option value="person">Người</option>
+              <option value="organization">Tổ chức</option>
+              <option value="technology">Công nghệ</option>
+              <option value="location">Địa điểm</option>
+              <option value="concept">Khái niệm</option>
+            </select>
+            <label style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--ink-secondary);cursor:pointer;">
+              <input type="checkbox" id="ent-table-clean" checked />
+              <span>Ẩn thực thể ít xuất hiện (&lt; 2 lần hoặc 1 âm tiết)</span>
+            </label>
+          </div>
+          <span id="ent-table-count" style="font-size:13px;color:var(--ink-muted);"></span>
+        </div>
 
-          <h3>2. Thông số kết nối OpenAI-Compatible</h3>
-          <form id="emb-settings-form" class="stack-form">
-            <div class="form-grid">
-              <label class="field">
-                <span>Provider</span>
-                <select id="emb-provider">
-                  <option value="ollama">ollama</option>
-                  <option value="openai">openai</option>
-                  <option value="lmstudio">lmstudio</option>
-                  <option value="custom">custom</option>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Thực thể</th>
+                <th>Loại</th>
+                <th>Số lần nhắc</th>
+                <th>Liên kết</th>
+                <th>Chứng cứ (trích nguyên văn)</th>
+              </tr>
+            </thead>
+            <tbody id="ent-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== SCREEN 5: CÀI ĐẶT ==================== -->
+    <section id="screen-settings" class="screen" hidden>
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Cài đặt</h1>
+          <p class="page-subtitle">Cấu hình nhà cung cấp embedding, kết nối máy chủ và chế độ nhà phát triển.</p>
+        </div>
+      </div>
+
+      <div class="settings-stack">
+        <!-- Developer Mode Toggle -->
+        <div class="card card-pad">
+          <div class="switch-row">
+            <div>
+              <div style="font-weight:700;font-size:15px;">Chế độ nhà phát triển</div>
+              <p class="page-subtitle" style="margin-top:3px;">
+                Hiển thị thêm công cụ kỹ thuật: Pipeline Inspector (xem artifact &amp; invalidate), Embedding Atlas 2D, Thử nghiệm &amp; Eval, và tuỳ chọn Dense / Sparse / Hybrid.
+              </p>
+            </div>
+            <label class="toggle-switch" aria-label="Bật chế độ nhà phát triển">
+              <input type="checkbox" id="dev-mode-toggle" />
+              <span class="toggle-track"></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Embedding Provider Settings -->
+        <div class="card card-pad">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap;">
+            <div>
+              <div style="font-weight:700;font-size:15px;">Nhà cung cấp Embedding</div>
+              <div id="emb-active-summary" class="page-subtitle" style="margin-top:2px;">Đang tải cấu hình hiện tại…</div>
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <button type="button" class="chip" data-emb-preset="ollama">Ollama</button>
+              <button type="button" class="chip" data-emb-preset="openai">OpenAI</button>
+              <button type="button" class="chip" data-emb-preset="lmstudio">LM Studio</button>
+              <button type="button" class="chip" data-emb-preset="openrouter">OpenRouter</button>
+            </div>
+          </div>
+
+          <form id="emb-settings-form" style="display:flex;flex-direction:column;gap:14px;">
+            <div class="form-grid-2">
+              <div>
+                <label class="field-label" for="emb-provider">Nhà cung cấp</label>
+                <select id="emb-provider" class="select">
+                  <option value="ollama">Ollama (Local)</option>
+                  <option value="openai">OpenAI</option>
+                  <option value="lmstudio">LM Studio</option>
+                  <option value="openrouter">OpenRouter</option>
+                  <option value="custom">OpenAI-Compatible tuỳ chỉnh</option>
                 </select>
-              </label>
-              <label class="field">
-                <span>Base URL (OpenAI-compatible)</span>
-                <input id="emb-base-url" placeholder="http://host.docker.internal:11434/v1" required/>
-              </label>
-              <label class="field">
-                <span>Model</span>
-                <input id="emb-model" placeholder="bge-m3" required/>
-              </label>
-              <label class="field">
-                <span>API Key (tùy chọn — để trống để giữ nguyên)</span>
-                <input id="emb-api-key" type="password" placeholder="Chưa cấu hình (không cần với Ollama local)"/>
-              </label>
-            </div>
-            <div class="controls" style="justify-content:space-between; margin-top:4px">
-              <label><input id="emb-clear-key" type="checkbox"/> Xóa API Key đã lưu</label>
-              <div class="controls">
-                <button type="button" class="secondary" id="btn-emb-test">Test Connection</button>
-                <button type="submit" id="btn-emb-save">Save &amp; Apply</button>
+              </div>
+              <div>
+                <label class="field-label" for="emb-model">Tên Model</label>
+                <input id="emb-model" class="input" placeholder="nomic-embed-text" required />
               </div>
             </div>
+
+            <div>
+              <label class="field-label" for="emb-base-url">API Base URL</label>
+              <input id="emb-base-url" class="input" placeholder="http://ollama:11434/v1" required />
+            </div>
+
+            <div>
+              <label class="field-label" for="emb-api-key">API Key (để trống nếu giữ nguyên hoặc chạy local)</label>
+              <input id="emb-api-key" class="input" type="password" placeholder="sk-..." />
+            </div>
+
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+              <button type="button" class="btn" id="btn-emb-test">Kiểm tra kết nối</button>
+              <button type="submit" class="btn btn-primary">Lưu &amp; Áp dụng</button>
+              <span id="emb-test-result" style="font-size:13px;color:var(--ink-secondary);"></span>
+            </div>
           </form>
-          <div id="emb-test-result" style="display:none"></div>
-        </section>
+        </div>
+
+        <!-- API & Workspace Connection -->
+        <div class="card card-pad">
+          <div style="font-weight:700;font-size:15px;margin-bottom:4px;">Kết nối API &amp; Workspace</div>
+          <p class="page-subtitle" style="margin-bottom:14px;">Cài đặt một lần cho địa chỉ máy chủ API, mã không gian làm việc (Tenant) và khoá xác thực.</p>
+          <form id="api-conn-form" style="display:flex;flex-direction:column;gap:14px;">
+            <div class="form-grid-2">
+              <div>
+                <label class="field-label" for="api-endpoint">API Endpoint</label>
+                <input id="api-endpoint" class="input" value="/api" />
+              </div>
+              <div>
+                <label class="field-label" for="tenant-id">Tenant / Workspace</label>
+                <input id="tenant-id" class="input" placeholder="default" />
+              </div>
+            </div>
+            <div>
+              <label class="field-label" for="api-key">API Key hoặc Bearer Token (tuỳ chọn)</label>
+              <input id="api-key" class="input" type="password" placeholder="mlab_... hoặc Bearer ..." />
+            </div>
+            <div>
+              <button type="submit" class="btn btn-primary">Lưu kết nối &amp; đồng bộ</button>
+            </div>
+          </form>
+        </div>
       </div>
-    </main>
+    </section>
+
+    <!-- ==================== DEV SCREEN 1: PIPELINE INSPECTOR ==================== -->
+    <section id="screen-dev-pipeline" class="screen screen-wide" hidden>
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Pipeline Inspector</h1>
+          <p class="page-subtitle">Kiểm tra các phiên xử lý tài liệu, xem artifact từng giai đoạn và vô hiệu hóa stage cache.</p>
+        </div>
+        <button type="button" class="btn btn-sm" id="btn-dev-refresh-runs">Làm mới</button>
+      </div>
+
+      <div class="topic-layout">
+        <div id="dev-runs-list" class="doc-list"></div>
+        <div class="card card-pad">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+            <strong id="dev-artifact-title">Chọn một artifact để kiểm tra</strong>
+            <span id="dev-artifact-meta" style="font-size:12px;color:var(--ink-muted);"></span>
+          </div>
+          <pre id="dev-artifact-viewer" class="code-box">Bấm vào manifest / normalized / chunks / enriched ở danh sách bên trái.</pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== DEV SCREEN 2: EMBEDDING ATLAS ==================== -->
+    <section id="screen-dev-atlas" class="screen screen-wide" hidden>
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Embedding Atlas (Chế độ nhà phát triển)</h1>
+          <p class="page-subtitle">Chiếu 2D không gian vector embedding kèm phân cụm và mật độ phục vụ gỡ lỗi truy xuất.</p>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <select id="dev-atlas-source" class="filter-select">
+            <option value="all">Tất cả nguồn</option>
+            <option value="documents">Tài liệu</option>
+            <option value="memory">Ký ức</option>
+          </select>
+          <button type="button" class="btn btn-sm" id="btn-dev-atlas-reload">Tải lại bản đồ</button>
+        </div>
+      </div>
+
+      <div class="atlas-dev-canvas-wrap">
+        <canvas id="dev-atlas-canvas"></canvas>
+        <div id="dev-atlas-tooltip" class="viz-tooltip" hidden></div>
+      </div>
+      <div id="dev-atlas-selected" class="card card-pad" style="margin-top:14px;" hidden></div>
+    </section>
+
+    <!-- ==================== DEV SCREEN 3: EXPERIMENTS & EVAL ==================== -->
+    <section id="screen-dev-eval" class="screen screen-wide" hidden>
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Thử nghiệm &amp; Đánh giá (Eval)</h1>
+          <p class="page-subtitle">Tạo bộ dữ liệu kiểm thử, đo Recall@K, MRR, nDCG@K và so sánh các cấu hình truy xuất.</p>
+        </div>
+      </div>
+
+      <div class="form-grid-2" style="margin-bottom:20px;">
+        <form id="eval-dataset-form" class="card card-pad" style="display:flex;flex-direction:column;gap:10px;">
+          <strong>1. Tạo bộ dữ liệu đánh giá</strong>
+          <input id="eval-ds-name" class="input" placeholder="Tên dataset (VD: Bộ câu hỏi quy trình)" required />
+          <textarea id="eval-ds-cases" class="textarea" rows="5" placeholder='[{"query": "PostgreSQL", "relevant_substrings": ["PostgreSQL"]}]' required></textarea>
+          <div style="display:flex;gap:8px;">
+            <button type="button" class="btn btn-sm" id="btn-eval-sample">Điền mẫu</button>
+            <button type="submit" class="btn btn-primary btn-sm">Tạo dataset</button>
+          </div>
+        </form>
+
+        <form id="eval-run-form" class="card card-pad" style="display:flex;flex-direction:column;gap:10px;">
+          <strong>2. Chạy đánh giá</strong>
+          <input id="eval-run-name" class="input" placeholder="Tên lần chạy (VD: Hybrid RRF v1)" required />
+          <select id="eval-run-dataset" class="select" required></select>
+          <div class="form-grid-2">
+            <select id="eval-run-target" class="select">
+              <option value="documents">Tài liệu</option>
+              <option value="memory">Ký ức</option>
+            </select>
+            <select id="eval-run-mode" class="select">
+              <option value="hybrid">Hybrid</option>
+              <option value="dense">Dense</option>
+              <option value="sparse">Sparse</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm">Chạy benchmark</button>
+        </form>
+      </div>
+
+      <div class="card card-pad">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <strong>Báo cáo đánh giá</strong>
+          <button type="button" class="btn btn-sm" id="btn-eval-compare">So sánh các báo cáo đã chọn</button>
+        </div>
+        <div id="eval-reports-list"></div>
+        <div id="eval-compare-out" style="margin-top:14px;"></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- RIGHT-HAND READING DRAWER (for Ask results) -->
+<div id="drawer-backdrop" class="drawer-backdrop" hidden></div>
+<aside id="reading-drawer" class="reading-drawer" aria-label="Xem đầy đủ đoạn trích" hidden>
+  <div class="drawer-header">
+    <div>
+      <div class="drawer-title" id="drawer-title">Chi tiết kết quả</div>
+      <div id="drawer-subtitle" style="font-size:12px;color:var(--ink-muted);"></div>
+    </div>
+    <button type="button" class="btn btn-ghost btn-sm" id="btn-close-drawer" aria-label="Đóng">✕</button>
+  </div>
+  <div class="drawer-body" id="drawer-body"></div>
+</aside>
+
+<!-- REPROCESS OPTIONS MODAL -->
+<div id="reprocess-modal" class="modal-backdrop" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="reprocess-modal-title">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <strong id="reprocess-modal-title" style="font-size:16px;">Xử lý lại với tuỳ chọn</strong>
+      <button type="button" class="btn btn-ghost btn-sm" id="btn-close-reprocess">✕</button>
+    </div>
+    <p id="reprocess-doc-name" class="page-subtitle" style="margin-bottom:14px;"></p>
+    <form id="reprocess-form" style="display:flex;flex-direction:column;gap:12px;">
+      <div>
+        <label class="field-label" for="rp-parser">Trình đọc tài liệu</label>
+        <select id="rp-parser" class="select">
+          <option value="docling">Docling (PDF, DOCX, cấu trúc bảng &amp; mục lục)</option>
+          <option value="text">Văn bản thuần (TXT, Markdown nhanh)</option>
+        </select>
+      </div>
+      <div>
+        <label class="field-label" for="rp-chunker">Cách chia đoạn</label>
+        <select id="rp-chunker" class="select">
+          <option value="fixed">Độ dài cố định theo ranh giới câu</option>
+          <option value="hybrid">Theo cấu trúc tài liệu (yêu cầu Docling)</option>
+        </select>
+      </div>
+      <div class="form-grid-2">
+        <div>
+          <label class="field-label" for="rp-size">Kích thước đoạn (ký tự)</label>
+          <input id="rp-size" class="input" type="number" min="100" max="10000" value="1200" />
+        </div>
+        <div>
+          <label class="field-label" for="rp-overlap">Phần chồng lấp</label>
+          <input id="rp-overlap" class="input" type="number" min="0" max="2000" value="150" />
+        </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px;">
+        <button type="button" class="btn" id="btn-cancel-reprocess">Huỷ</button>
+        <button type="submit" class="btn btn-primary">Bắt đầu xử lý</button>
+      </div>
+    </form>
   </div>
 </div>
 
+<!-- TOAST NOTIFICATIONS -->
+<div id="toast-rack" class="toast-rack" aria-live="polite"></div>
+
 <script>
 import {
-  EmbeddingAtlasCanvas,
-  atlasColorForPoint,
-  clusterColor,
-  type AtlasColorBy,
-  type AtlasFilterState,
-  type AtlasInteractionMode,
-  type AtlasPayload,
-  type AtlasPoint,
-} from '../lib/atlas';
-import { InteractiveKnowledgeGraph, type GraphEdgeData, type GraphNodeData } from '../lib/graph';
+  renderTopicTreemap,
+  EgoGraphRenderer,
+  ENTITY_TYPE_META,
+  entityTypeLabel,
+  type TopicMapPayload,
+  type TopicCluster,
+  type EgoGraphPayload,
+  type EgoNode,
+} from '../lib/viz';
+import { EmbeddingAtlasCanvas, type AtlasPayload } from '../lib/atlas';
 
-const el = (id: string) => document.getElementById(id)!;
-const input = (id: string) => el(id) as HTMLInputElement;
-const select = (id: string) => el(id) as HTMLSelectElement;
-const base = () => input('api').value.replace(/\/$/, '');
+// ==================== Helpers & State ====================
 
-const TAB_META: Record<string, { title: string; subtitle: string }> = {
-  documents: {
-    title: 'Kho tri thức & Pipeline tài liệu',
-    subtitle: 'Nạp tài liệu, xử lý trích xuất phi-LLM, kiểm tra stage cache và truy xuất nguồn chứng cứ.',
-  },
-  knowledge: {
-    title: 'Knowledge Explorer — Embedding Atlas, Đồ thị & Bảng',
-    subtitle: 'Khám phá không gian embedding 2D kèm KDE contours, lọc chéo đa chiều, đồ thị thực thể và bảng dữ liệu.',
-  },
-  memory: {
-    title: 'Agent Memory Playground',
-    subtitle: 'Lưu trữ interaction traces, kiểm thử Vector / Graph / ZeroToken / Hybrid và phân cấp thời gian.',
-  },
-  experiments: {
-    title: 'Experimentation & Benchmark Evaluation',
-    subtitle: 'Tạo bộ đề đánh giá có dataset_hash, đo Recall@K, MRR, nDCG@K và so sánh cấu hình song song.',
-  },
-  settings: {
-    title: 'Embedding Provider Settings',
-    subtitle: 'Cấu hình và kiểm tra kết nối Ollama, OpenAI, LM Studio hoặc endpoint OpenAI-compatible trực tiếp tại runtime.',
-  },
+const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
+const $input = (id: string) => $(id) as HTMLInputElement;
+const $select = (id: string) => $(id) as HTMLSelectElement;
+
+const STORAGE_KEYS = {
+  api: 'mlab_api_endpoint',
+  tenant: 'mlab_tenant_id',
+  devMode: 'mlab_dev_mode',
 };
 
-let activeKbScope = 'all';
-let activeKbTableView = 'entities';
-let activeKbViz: 'atlas' | 'graph' | 'table' = 'atlas';
-let graphEngine: InteractiveKnowledgeGraph | null = null;
-let atlasEngine: EmbeddingAtlasCanvas | null = null;
-let atlasData: AtlasPayload | null = null;
-let atlasFilters: AtlasFilterState = {
-  clusterId: null,
-  sourceType: null,
-  strategy: null,
-  date: null,
-  entity: null,
-  query: '',
-  brushIds: null,
+const STAGE_ORDER = [
+  { key: 'parse', label: 'Đọc' },
+  { key: 'normalize', label: 'Chuẩn hoá' },
+  { key: 'chunk', label: 'Chia đoạn' },
+  { key: 'enrich', label: 'Trích thực thể' },
+  { key: 'index', label: 'Lập chỉ mục' },
+];
+
+const EMB_PRESETS: Record<string, { provider: string; base_url: string; model: string }> = {
+  ollama: { provider: 'ollama', base_url: 'http://ollama:11434/v1', model: 'nomic-embed-text' },
+  openai: { provider: 'openai', base_url: 'https://api.openai.com/v1', model: 'text-embedding-3-small' },
+  lmstudio: { provider: 'lmstudio', base_url: 'http://host.docker.internal:1234/v1', model: 'text-embedding-nomic-embed-text-v1.5' },
+  openrouter: { provider: 'openrouter', base_url: 'https://openrouter.ai/api/v1', model: 'openai/text-embedding-3-small' },
 };
+
+let activeScreen = 'ask';
+let devMode = localStorage.getItem(STORAGE_KEYS.devMode) === '1';
+
+let docsCache: any[] = [];
+let memoriesCache: any[] = [];
+let topEntitiesCache: { id: string; name: string; type: string; mentions: number }[] = [];
+
+// Ask state
+let askScope: 'all' | 'documents' | 'memory' = 'all';
+let askLastResults: any = null;
+let askSelectedKey = '';
+
+// Document SSE watchers
+const activeRunWatchers = new Map<string, () => void>();
+let currentDetailDoc: { id: string; version: string; filename: string } | null = null;
+let reprocessTarget: { id: string; version: string; filename: string } | null = null;
+
+// Explore state
+let activeExploreView: 'topics' | 'ego' | 'table' = 'topics';
+let topicSource: 'all' | 'documents' | 'memory' = 'all';
+let topicDataCache: TopicMapPayload | null = null;
+let selectedTopicId: string | null = null;
+
+let egoRenderer: EgoGraphRenderer | null = null;
+let egoCurrentEntity = '';
+let egoDepth = 1;
+let egoPayloadCache: EgoGraphPayload | null = null;
+
+// Dev Atlas
+let devAtlasEngine: EmbeddingAtlasCanvas | null = null;
+
+function esc(s: unknown): string {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function toast(message: string, kind: 'info' | 'ok' | 'err' = 'info') {
+  const rack = $('toast-rack');
+  while (rack.children.length >= 2) {
+    rack.firstElementChild?.remove();
+  }
+  const item = document.createElement('div');
+  item.className = `toast ${kind === 'ok' ? 'is-ok' : kind === 'err' ? 'is-err' : ''}`;
+  item.textContent = message;
+  rack.appendChild(item);
+  setTimeout(() => {
+    item.remove();
+  }, 2600);
+}
+
+function apiBase(): string {
+  return ($input('api-endpoint').value || '/api').trim().replace(/\/$/, '');
+}
 
 function authHeaders(): Record<string, string> {
-  const headers: Record<string, string> = {};
-  const tenant = input('tenant-id')?.value.trim();
-  const key = input('api-key')?.value.trim();
-  if (tenant) headers['X-Tenant-ID'] = tenant;
+  const h: Record<string, string> = {};
+  const tenant = $input('tenant-id').value.trim();
+  const key = $input('api-key').value.trim();
+  if (tenant) h['X-Tenant-ID'] = tenant;
   if (key) {
-    if (key.toLowerCase().startsWith('bearer ')) headers['Authorization'] = key;
-    else headers['X-API-Key'] = key;
+    if (key.toLowerCase().startsWith('bearer ')) h['Authorization'] = key;
+    else h['X-API-Key'] = key;
   }
-  return headers;
+  return h;
 }
 
-async function request(path: string, init?: RequestInit) {
-  const mergedHeaders = { ...authHeaders(), ...(init?.headers as Record<string, string> | undefined) };
-  const response = await fetch(base() + path, { ...init, headers: mergedHeaders });
-  if (!response.ok) throw new Error(await response.text());
-  if (response.status === 204) return null;
-  return response.json();
+async function apiFetch(path: string, init?: RequestInit) {
+  const headers = { ...authHeaders(), ...(init?.headers as Record<string, string> | undefined) };
+  const res = await fetch(apiBase() + path, { ...init, headers });
+  if (!res.ok) {
+    let detail = await res.text();
+    try {
+      const parsed = JSON.parse(detail);
+      detail = parsed.detail || detail;
+    } catch {}
+    throw new Error(detail || `HTTP ${res.status}`);
+  }
+  if (res.status === 204) return null;
+  return res.json();
 }
 
-async function action(work: () => Promise<void>) {
-  const statusEl = el('status');
-  statusEl.className = 'status-bar';
-  statusEl.textContent = 'Đang xử lý…';
+function formatBytes(bytes: number): string {
+  if (!bytes) return '0 B';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function formatRelativeTime(isoOrTs: string | number | null | undefined): string {
+  if (!isoOrTs) return '';
+  const date = typeof isoOrTs === 'number' ? new Date(isoOrTs * 1000) : new Date(isoOrTs);
+  if (Number.isNaN(date.getTime())) return String(isoOrTs);
+  const diffSec = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (diffSec < 60) return 'vừa xong';
+  if (diffSec < 3600) return `${Math.floor(diffSec / 60)} phút trước`;
+  if (diffSec < 86400) return `${Math.floor(diffSec / 3600)} giờ trước`;
+  if (diffSec < 7 * 86400) return `${Math.floor(diffSec / 86400)} ngày trước`;
+  return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+function highlightText(text: string, query: string): string {
+  const safe = esc(text);
+  const terms = Array.from(
+    new Set(
+      query
+        .trim()
+        .split(/\s+/)
+        .map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+        .filter((t) => t.length >= 2)
+    )
+  ).sort((a, b) => b.length - a.length);
+  if (!terms.length) return safe;
+  const re = new RegExp(`(${terms.join('|')})`, 'gi');
+  return safe.replace(re, '<mark>$1</mark>');
+}
+
+function relevanceBarsHtml(score: number, maxScore: number): string {
+  const ratio = maxScore > 0 ? Math.max(0.15, Math.min(1, score / maxScore)) : 0.5;
+  const lit = Math.max(1, Math.min(5, Math.round(ratio * 5)));
+  const heights = [5, 7, 9, 11, 14];
+  return `
+    <span class="relevance-bars" title="Mức độ phù hợp: ${lit}/5" aria-label="Mức độ phù hợp ${lit} trên 5">
+      ${heights.map((h, i) => `<span class="relevance-bar ${i < lit ? 'is-lit' : ''}" style="height:${h}px"></span>`).join('')}
+    </span>
+  `;
+}
+
+function defaultPipelineConfigFor(filename: string) {
+  const ext = (filename.split('.').pop() || '').toLowerCase();
+  const isPlain = ext === 'txt' || ext === 'md' || ext === 'markdown' || ext === 'csv';
+  return {
+    parser: isPlain ? 'text' : 'docling',
+    chunker: 'fixed',
+    chunk_size: 1200,
+    overlap: 150,
+    enrich: true,
+  };
+}
+
+// ==================== Navigation & Developer Mode ====================
+
+function applyDevModeUI() {
+  $input('dev-mode-toggle').checked = devMode;
+  $('nav-dev-section').hidden = !devMode;
+  $('ask-dev-controls').hidden = !devMode;
+  $('mem-opt-strategy-wrap').hidden = !devMode;
+  if (!devMode && activeScreen.startsWith('dev-')) {
+    switchScreen('ask');
+  }
+  if (currentDetailDoc) {
+    $('doc-detail-dev-bar').hidden = !devMode;
+  }
+}
+
+function switchScreen(screen: string) {
+  activeScreen = screen;
+  document.querySelectorAll<HTMLElement>('.main-area > section.screen').forEach((sec) => {
+    sec.hidden = sec.id !== `screen-${screen}`;
+  });
+  document.querySelectorAll<HTMLButtonElement>('.sidebar .nav-item[data-screen]').forEach((btn) => {
+    const isAct = btn.dataset.screen === screen;
+    btn.classList.toggle('is-active', isAct);
+    btn.setAttribute('aria-selected', String(isAct));
+  });
+
+  if (screen === 'ask') {
+    loadAskIdleData();
+  } else if (screen === 'docs') {
+    $('docs-list-view').hidden = false;
+    $('docs-detail-view').hidden = true;
+    currentDetailDoc = null;
+    loadDocuments();
+  } else if (screen === 'memory') {
+    loadMemories();
+  } else if (screen === 'explore') {
+    loadExploreActiveView();
+  } else if (screen === 'settings') {
+    loadEmbeddingSettings();
+  } else if (screen === 'dev-pipeline') {
+    loadDevPipelineRuns();
+  } else if (screen === 'dev-atlas') {
+    loadDevAtlas();
+  } else if (screen === 'dev-eval') {
+    loadDevEval();
+  }
+}
+
+function jumpToEntityEgoGraph(entityId: string) {
+  closeDrawer();
+  switchScreen('explore');
+  switchExploreView('ego');
+  loadEgoGraph(entityId, 1);
+}
+
+// ==================== Connection Health ====================
+
+async function checkHealth() {
+  const dot = $('conn-dot');
+  const label = $('conn-label');
   try {
-    await work();
-    statusEl.className = 'status-bar ok';
-    statusEl.textContent = 'Hoàn tất.';
-  } catch (error) {
-    statusEl.className = 'status-bar err';
-    statusEl.textContent = String(error);
+    await apiFetch('/health');
+    dot.className = 'conn-dot is-ok';
+    label.textContent = 'Đã kết nối';
+  } catch {
+    dot.className = 'conn-dot is-err';
+    label.textContent = 'Mất kết nối API';
   }
 }
 
-function button(label: string, work: () => Promise<void>, className = '') {
-  const node = document.createElement('button');
-  node.type = 'button';
-  node.textContent = label;
-  if (className) node.className = className;
-  node.onclick = () => action(work);
-  return node;
+// ==================== SCREEN 1: HỎI ====================
+
+async function loadAskIdleData() {
+  try {
+    const [docs, mems] = await Promise.all([
+      apiFetch('/documents').catch(() => []),
+      apiFetch('/memory/records?limit=50').catch(() => []),
+    ]);
+    docsCache = docs || [];
+    memoriesCache = mems || [];
+
+    $('nav-badge-docs').textContent = String(docsCache.length);
+    $('nav-badge-memory').textContent = String(memoriesCache.length);
+
+    // Populate Ask document & time filters
+    const docSel = $select('ask-doc-filter');
+    const prevDoc = docSel.value;
+    docSel.innerHTML =
+      `<option value="">Tài liệu: Tất cả</option>` +
+      docsCache.map((d) => `<option value="${esc(d.id)}">${esc(d.filename)}</option>`).join('');
+    if (prevDoc) docSel.value = prevDoc;
+
+    const months = Array.from(
+      new Set(memoriesCache.map((m) => String(m.timestamp || '').slice(0, 7)).filter((s) => /^\d{4}-\d{2}$/.test(s)))
+    ).sort((a, b) => b.localeCompare(a));
+    const timeSel = $select('ask-time-filter');
+    const prevTime = timeSel.value;
+    timeSel.innerHTML =
+      `<option value="">Thời gian: Tất cả</option>` +
+      months.map((m) => `<option value="${esc(m)}">Tháng ${m.slice(5)}/${m.slice(0, 4)}</option>`).join('');
+    if (prevTime) timeSel.value = prevTime;
+
+    renderAskRecent();
+  } catch {}
 }
 
-function pill(text: string, extraClass = '') {
-  const span = document.createElement('span');
-  span.className = extraClass ? `pill ${extraClass}` : 'pill';
-  span.textContent = text;
-  return span;
-}
-
-function switchTab(target: string) {
-  document.querySelectorAll<HTMLButtonElement>('.tab').forEach((b) => {
-    const active = b.dataset.tab === target;
-    b.classList.toggle('active', active);
-    b.setAttribute('aria-selected', String(active));
-  });
-  document.querySelectorAll('.tab-panel').forEach((p) => {
-    p.classList.toggle('active', p.id === `tab-${target}`);
-  });
-  const meta = TAB_META[target];
-  if (meta) {
-    el('page-title').textContent = meta.title;
-    el('page-subtitle').textContent = meta.subtitle;
+function renderAskRecent() {
+  const recentDocsEl = $('ask-recent-docs');
+  if (!docsCache.length) {
+    recentDocsEl.innerHTML = `
+      <div class="card card-pad" style="text-align:center;color:var(--ink-muted);font-size:13px;">
+        Chưa có tài liệu nào. <button type="button" class="btn btn-ghost btn-sm" id="btn-empty-upload-doc" style="color:var(--accent);">Tải tài liệu lên →</button>
+      </div>
+    `;
+    $('btn-empty-upload-doc')?.addEventListener('click', () => switchScreen('docs'));
+  } else {
+    recentDocsEl.innerHTML = docsCache
+      .slice(0, 4)
+      .map((d) => {
+        const chunks = d.latest_run?.chunk_count || 0;
+        const st = d.latest_run?.status === 'completed' ? `${chunks} đoạn · Sẵn sàng` : d.latest_run?.status === 'processing' ? 'Đang xử lý…' : 'Chưa xử lý';
+        return `
+          <button type="button" class="recent-item" data-open-doc="${esc(d.id)}" data-open-ver="${esc(d.version)}">
+            <div style="min-width:0;">
+              <div class="recent-item-title">📄 ${esc(d.filename)}</div>
+              <div class="recent-item-meta">${esc(st)} ${d.updated_ts ? '· ' + formatRelativeTime(d.updated_ts) : ''}</div>
+            </div>
+            <span class="doc-ext">${esc(d.extension || 'txt')}</span>
+          </button>
+        `;
+      })
+      .join('');
+    recentDocsEl.querySelectorAll<HTMLButtonElement>('[data-open-doc]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        switchScreen('docs');
+        openDocumentDetail(btn.dataset.openDoc!, btn.dataset.openVer!);
+      });
+    });
   }
-  if (target === 'knowledge') {
-    action(refreshKnowledge);
-  } else if (target === 'settings') {
-    action(refreshEmbeddingSettings);
+
+  const recentMemEl = $('ask-recent-memories');
+  if (!memoriesCache.length) {
+    recentMemEl.innerHTML = `
+      <div class="card card-pad" style="text-align:center;color:var(--ink-muted);font-size:13px;">
+        Chưa có ký ức nào. <button type="button" class="btn btn-ghost btn-sm" id="btn-empty-add-mem" style="color:var(--accent);">Ghi nhớ điều đầu tiên →</button>
+      </div>
+    `;
+    $('btn-empty-add-mem')?.addEventListener('click', () => switchScreen('memory'));
+  } else {
+    recentMemEl.innerHTML = memoriesCache
+      .slice(0, 4)
+      .map((m) => {
+        const preview = String(m.content || '').length > 110 ? String(m.content).slice(0, 108) + '…' : String(m.content || '');
+        return `
+          <button type="button" class="recent-item" data-open-mem="${esc(m.id)}">
+            <div style="min-width:0;">
+              <div class="recent-item-title">🧠 ${esc(preview)}</div>
+              <div class="recent-item-meta">${esc(m.session_id || 'default')} · ${formatRelativeTime(m.timestamp)}</div>
+            </div>
+          </button>
+        `;
+      })
+      .join('');
+    recentMemEl.querySelectorAll<HTMLButtonElement>('[data-open-mem]').forEach((btn) => {
+      btn.addEventListener('click', () => switchScreen('memory'));
+    });
   }
 }
 
-function switchKbViz(viz: 'atlas' | 'graph' | 'table') {
-  activeKbViz = viz;
-  document.querySelectorAll<HTMLButtonElement>('#kb-viz-switch button').forEach((b) => {
-    b.classList.toggle('active', b.dataset.viz === viz);
+async function runAskSearch() {
+  const q = $input('ask-input').value.trim();
+  if (!q) {
+    clearAskResults();
+    return;
+  }
+
+  const params = new URLSearchParams({
+    q,
+    scope: askScope,
+    doc_mode: devMode ? $select('ask-dev-doc-mode').value : 'hybrid',
+    memory_strategy: devMode ? $select('ask-dev-mem-strategy').value : 'hybrid',
+    limit: '15',
   });
-  el('kb-viz-atlas').style.display = viz === 'atlas' ? 'block' : 'none';
-  el('kb-viz-graph').style.display = viz === 'graph' ? 'block' : 'none';
-  el('kb-viz-table').style.display = viz === 'table' ? 'block' : 'none';
-  if (viz === 'atlas') action(refreshEmbeddingAtlas);
-  else if (viz === 'graph') action(refreshKnowledgeGraph);
-  else action(refreshKnowledgeTable);
+  const docId = $select('ask-doc-filter').value;
+  if (docId) params.set('document_id', docId);
+  const tb = $select('ask-time-filter').value;
+  if (tb) params.set('temporal_bucket', tb);
+
+  $('ask-hero').classList.add('has-results');
+  $('ask-idle').hidden = true;
+  $('ask-results-wrap').hidden = false;
+  $('ask-results-summary').textContent = 'Đang tìm kiếm…';
+  $('ask-results-list').innerHTML = '';
+
+  try {
+    const data = await apiFetch(`/knowledge/search?${params.toString()}`);
+    askLastResults = data;
+    renderAskResults(data, q);
+  } catch (err: any) {
+    $('ask-results-summary').textContent = `Không thể tìm kiếm: ${err.message}`;
+  }
 }
 
-// --- Tab navigation & Shortcuts ---
-for (const tabBtn of document.querySelectorAll<HTMLButtonElement>('.tab')) {
-  tabBtn.onclick = () => switchTab(tabBtn.dataset.tab!);
+function clearAskResults() {
+  $input('ask-input').value = '';
+  askLastResults = null;
+  askSelectedKey = '';
+  $('ask-hero').classList.remove('has-results');
+  $('ask-results-wrap').hidden = true;
+  $('ask-idle').hidden = false;
+  closeDrawer();
 }
 
+function renderAskResults(data: any, query: string) {
+  const unified: any[] = [];
+  for (const d of data.documents || []) {
+    unified.push({ kind: 'document', key: `doc:${d.chunk.id}`, score: Number(d.score || 0), raw: d });
+  }
+  for (const m of data.memories || []) {
+    unified.push({ kind: 'memory', key: `mem:${m.record.id}`, score: Number(m.score || 0), raw: m });
+  }
+  unified.sort((a, b) => b.score - a.score);
+
+  const summary = $('ask-results-summary');
+  const list = $('ask-results-list');
+
+  if (!unified.length) {
+    summary.textContent = `0 kết quả cho “${query}”`;
+    list.innerHTML = `
+      <div class="card empty-state">
+        <div class="empty-title">Không tìm thấy kết quả phù hợp</div>
+        <p class="empty-sub">Thử từ khóa ngắn hơn, bỏ bộ lọc thời gian/tài liệu, hoặc tải thêm tài liệu mới.</p>
+      </div>
+    `;
+    return;
+  }
+
+  summary.textContent = `Tìm thấy ${unified.length} kết quả liên quan (${data.latency_ms} ms)`;
+  const maxScore = Math.max(...unified.map((u) => u.score), 0.001);
+
+  list.innerHTML = unified
+    .map((item) => {
+      if (item.kind === 'document') {
+        const d = item.raw;
+        const metaParts = [d.filename];
+        if (d.heading) metaParts.push(d.heading);
+        if (d.page != null) metaParts.push(`Trang ${d.page}`);
+        const text = String(d.chunk.text || '');
+        const snippet = text.length > 320 ? text.slice(0, 318) + '…' : text;
+        const ents = (d.entities || [])
+          .slice(0, 5)
+          .map((e: any) => `<span class="tag-pill">${esc(e.name)}</span>`)
+          .join('');
+        return `
+          <button type="button" class="result-card ${askSelectedKey === item.key ? 'is-selected' : ''}" data-res-key="${esc(item.key)}">
+            <div class="result-top">
+              <span class="result-source"><span class="source-icon-doc">📄</span> ${esc(metaParts.join(' · '))}</span>
+              ${relevanceBarsHtml(item.score, maxScore)}
+            </div>
+            <p class="result-excerpt">${highlightText(snippet, query)}</p>
+            ${ents ? `<div class="result-footer">${ents}</div>` : ''}
+          </button>
+        `;
+      } else {
+        const m = item.raw;
+        const rec = m.record;
+        const dateLabel = String(rec.timestamp || '').slice(0, 10);
+        const text = String(rec.content || '');
+        const snippet = text.length > 320 ? text.slice(0, 318) + '…' : text;
+        const ents = (rec.entities || [])
+          .slice(0, 5)
+          .map((e: any) => `<span class="tag-pill">${esc(e.name)}</span>`)
+          .join('');
+        return `
+          <button type="button" class="result-card ${askSelectedKey === item.key ? 'is-selected' : ''}" data-res-key="${esc(item.key)}">
+            <div class="result-top">
+              <span class="result-source"><span class="source-icon-mem">🧠</span> Ký ức · ${esc(dateLabel)} · ${esc(rec.session_id || 'default')}</span>
+              ${relevanceBarsHtml(item.score, maxScore)}
+            </div>
+            <p class="result-excerpt">${highlightText(snippet, query)}</p>
+            ${ents ? `<div class="result-footer">${ents}</div>` : ''}
+          </button>
+        `;
+      }
+    })
+    .join('');
+
+  list.querySelectorAll<HTMLButtonElement>('.result-card').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const key = btn.dataset.resKey!;
+      askSelectedKey = key;
+      list.querySelectorAll('.result-card').forEach((c) => c.classList.toggle('is-selected', (c as HTMLElement).dataset.resKey === key));
+      const found = unified.find((u) => u.key === key);
+      if (found) openReadingDrawer(found, query);
+    });
+  });
+}
+
+function openReadingDrawer(item: any, query: string) {
+  const titleEl = $('drawer-title');
+  const subEl = $('drawer-subtitle');
+  const bodyEl = $('drawer-body');
+
+  if (item.kind === 'document') {
+    const d = item.raw;
+    titleEl.textContent = d.filename;
+    const subParts: string[] = [];
+    if (d.heading) subParts.push(d.heading);
+    if (d.page != null) subParts.push(`Trang ${d.page}`);
+    if (d.chunk_index != null) subParts.push(`Đoạn #${d.chunk_index + 1}`);
+    subEl.textContent = subParts.join(' · ') || 'Đoạn trích từ tài liệu';
+
+    const prevHtml = d.adjacent?.prev_text
+      ? `<div class="drawer-adjacent"><div class="drawer-adjacent-label">Đoạn trước</div>${esc(d.adjacent.prev_text)}</div>`
+      : '';
+    const nextHtml = d.adjacent?.next_text
+      ? `<div class="drawer-adjacent"><div class="drawer-adjacent-label">Đoạn tiếp theo</div>${esc(d.adjacent.next_text)}</div>`
+      : '';
+    const entHtml = (d.entities || []).length
+      ? `<div>
+           <div class="aside-title">Thực thể trong đoạn</div>
+           <div style="display:flex;flex-wrap:wrap;gap:6px;">
+             ${d.entities.map((e: any) => `<button type="button" class="entity-chip" data-jump-entity="${esc(e.id)}">${esc(e.name)}</button>`).join('')}
+           </div>
+         </div>`
+      : '';
+
+    bodyEl.innerHTML = `
+      ${prevHtml}
+      <div class="drawer-passage">${highlightText(d.chunk.text, query)}</div>
+      ${nextHtml}
+      ${entHtml}
+      <div style="display:flex;gap:8px;padding-top:10px;border-top:1px solid var(--border);">
+        <button type="button" class="btn btn-primary btn-sm" id="btn-drawer-open-doc">Đọc toàn bộ tài liệu</button>
+        <a class="btn btn-sm" href="${esc(apiBase() + d.source_url)}" download>Tải tệp gốc</a>
+      </div>
+    `;
+    $('btn-drawer-open-doc')?.addEventListener('click', () => {
+      closeDrawer();
+      switchScreen('docs');
+      openDocumentDetail(d.chunk.document_id, d.chunk.version);
+    });
+  } else {
+    const rec = item.raw.record;
+    titleEl.textContent = `Ký ức · ${String(rec.timestamp || '').slice(0, 10)}`;
+    subEl.textContent = `Phiên: ${rec.session_id || 'default'}`;
+    const entHtml = (rec.entities || []).length
+      ? `<div>
+           <div class="aside-title">Thực thể liên quan</div>
+           <div style="display:flex;flex-wrap:wrap;gap:6px;">
+             ${rec.entities.map((e: any) => `<button type="button" class="entity-chip" data-jump-entity="${esc(e.normalized_name || e.name)}">${esc(e.name)}</button>`).join('')}
+           </div>
+         </div>`
+      : '';
+    const tagsHtml = (rec.tags || []).length
+      ? `<div style="display:flex;flex-wrap:wrap;gap:6px;">${rec.tags.map((t: string) => `<span class="tag-pill">#${esc(t)}</span>`).join('')}</div>`
+      : '';
+
+    bodyEl.innerHTML = `
+      <div class="drawer-passage">${highlightText(rec.content, query)}</div>
+      ${tagsHtml}
+      ${entHtml}
+      <div style="padding-top:10px;border-top:1px solid var(--border);">
+        <button type="button" class="btn btn-sm" id="btn-drawer-open-mem">Xem trong dòng thời gian Ký ức</button>
+      </div>
+    `;
+    $('btn-drawer-open-mem')?.addEventListener('click', () => {
+      closeDrawer();
+      switchScreen('memory');
+    });
+  }
+
+  bodyEl.querySelectorAll<HTMLButtonElement>('[data-jump-entity]').forEach((btn) => {
+    btn.addEventListener('click', () => jumpToEntityEgoGraph(btn.dataset.jumpEntity!));
+  });
+
+  $('drawer-backdrop').hidden = false;
+  $('reading-drawer').hidden = false;
+}
+
+function closeDrawer() {
+  $('drawer-backdrop').hidden = true;
+  $('reading-drawer').hidden = true;
+}
+
+// ==================== SCREEN 2: TÀI LIỆU ====================
+
+async function loadDocuments() {
+  try {
+    docsCache = await apiFetch('/documents');
+    $('nav-badge-docs').textContent = String(docsCache.length);
+    renderDocumentsList();
+    // Auto-watch any currently processing runs
+    for (const d of docsCache) {
+      if (d.latest_run?.status === 'processing' && d.latest_run.pipeline_run_id) {
+        watchRunProgress(d.latest_run.pipeline_run_id, d.id, d.version);
+      }
+    }
+  } catch (err: any) {
+    $('docs-list').innerHTML = `<div class="card empty-state"><div class="empty-title">Không thể tải danh sách tài liệu</div><p class="empty-sub">${esc(err.message)}</p></div>`;
+  }
+}
+
+function renderStatusHtml(run: any): string {
+  if (!run) return `<span class="status-pill status-pending">Chưa xử lý</span>`;
+  if (run.status === 'completed') return `<span class="status-pill status-ready">✓ Sẵn sàng</span>`;
+  if (run.status === 'processing') {
+    const pct = Number(run.progress || 10);
+    return `<span class="status-pill status-processing">⟳ Đang xử lý · ${pct}%</span>`;
+  }
+  if (run.status === 'failed') {
+    const reason = run.error_message || run.error_type || 'Lỗi xử lý';
+    return `<span class="status-pill status-error" title="${esc(reason)}">⚠ Lỗi</span>`;
+  }
+  return `<span class="status-pill status-pending">Cần xử lý lại</span>`;
+}
+
+function renderFiveStepBar(run: any): string {
+  const stages = run.stages || {};
+  const pct = Number(run.progress || 10);
+  return `
+    <div class="doc-progress-wrap" data-progress-run="${esc(run.pipeline_run_id)}">
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--ink-secondary);">
+        <span>Đang xử lý tài liệu…</span>
+        <strong>${pct}%</strong>
+      </div>
+      <div class="steps-5">
+        ${STAGE_ORDER.map((s) => {
+          const st = stages[s.key] || 'pending';
+          const cls = st === 'completed' ? 'is-done' : st === 'running' ? 'is-running' : '';
+          return `
+            <div class="step-item ${cls}">
+              <div class="step-bar"></div>
+              <span class="step-label">${s.label}</span>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function renderDocumentsList() {
+  const wrap = $('docs-list');
+  if (!docsCache.length) {
+    wrap.innerHTML = `
+      <div class="card empty-state">
+        <div class="empty-title">Chưa có tài liệu nào</div>
+        <p class="empty-sub">Kéo thả tệp PDF, DOCX, Markdown hoặc TXT vào khung phía trên để bắt đầu xây dựng kho tri thức.</p>
+      </div>
+    `;
+    return;
+  }
+
+  wrap.innerHTML = docsCache
+    .map((d) => {
+      const run = d.latest_run;
+      const chunksLabel = run?.chunk_count ? `${run.chunk_count} đoạn` : formatBytes(d.size_bytes);
+      const updated = formatRelativeTime(run?.updated_at || d.updated_ts);
+      const errDetail =
+        run?.status === 'failed' && run.error_message
+          ? `<div style="font-size:12px;color:var(--danger);margin-top:4px;">Lý do: ${esc(run.error_message)}</div>`
+          : '';
+      const progressBar = run?.status === 'processing' ? renderFiveStepBar(run) : '';
+
+      return `
+        <div class="doc-row" data-doc-row="${esc(d.id)}:${esc(d.version)}">
+          <div class="doc-main" data-open-detail="${esc(d.id)}" data-open-ver="${esc(d.version)}">
+            <div class="doc-name-line">
+              <span class="doc-ext">${esc(d.extension || 'txt')}</span>
+              <span class="doc-filename">${esc(d.filename)}</span>
+            </div>
+            <div class="doc-meta-line">${esc(chunksLabel)} ${updated ? '· Cập nhật ' + esc(updated) : ''}</div>
+            ${errDetail}
+          </div>
+
+          <div data-status-slot="${esc(d.id)}:${esc(d.version)}">${renderStatusHtml(run)}</div>
+
+          <div class="doc-menu-wrap">
+            <button type="button" class="btn btn-ghost btn-icon" data-toggle-menu="${esc(d.id)}:${esc(d.version)}" aria-label="Thao tác">⋯</button>
+            <div class="doc-menu" data-menu-panel="${esc(d.id)}:${esc(d.version)}" hidden>
+              <button type="button" data-doc-reprocess="${esc(d.id)}" data-doc-ver="${esc(d.version)}" data-doc-name="${esc(d.filename)}">Xử lý lại</button>
+              <button type="button" data-doc-reprocess-opts="${esc(d.id)}" data-doc-ver="${esc(d.version)}" data-doc-name="${esc(d.filename)}">Xử lý lại với tuỳ chọn…</button>
+              <a href="${esc(apiBase())}/documents/${esc(d.id)}/versions/${esc(d.version)}/source" download="${esc(d.filename)}">Tải xuống</a>
+              <button type="button" class="is-danger" data-doc-delete="${esc(d.id)}" data-doc-name="${esc(d.filename)}">Xoá tài liệu</button>
+            </div>
+          </div>
+
+          ${progressBar}
+        </div>
+      `;
+    })
+    .join('');
+
+  // Wire row interactions
+  wrap.querySelectorAll<HTMLElement>('[data-open-detail]').forEach((el) => {
+    el.addEventListener('click', () => openDocumentDetail(el.dataset.openDetail!, el.dataset.openVer!));
+  });
+
+  wrap.querySelectorAll<HTMLButtonElement>('[data-toggle-menu]').forEach((btn) => {
+    btn.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      const key = btn.dataset.toggleMenu!;
+      wrap.querySelectorAll<HTMLElement>('.doc-menu').forEach((m) => {
+        if (m.dataset.menuPanel !== key) m.hidden = true;
+      });
+      const target = wrap.querySelector<HTMLElement>(`.doc-menu[data-menu-panel="${CSS.escape(key)}"]`);
+      if (target) target.hidden = !target.hidden;
+    });
+  });
+
+  wrap.querySelectorAll<HTMLButtonElement>('[data-doc-reprocess]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      closeAllDocMenus();
+      triggerBackgroundProcess(btn.dataset.docReprocess!, btn.dataset.docVer!, btn.dataset.docName!, defaultPipelineConfigFor(btn.dataset.docName!));
+    });
+  });
+
+  wrap.querySelectorAll<HTMLButtonElement>('[data-doc-reprocess-opts]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      closeAllDocMenus();
+      openReprocessModal(btn.dataset.docReprocessOpts!, btn.dataset.docVer!, btn.dataset.docName!);
+    });
+  });
+
+  wrap.querySelectorAll<HTMLButtonElement>('[data-doc-delete]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      closeAllDocMenus();
+      const name = btn.dataset.docName!;
+      if (!confirm(`Xoá tài liệu “${name}” cùng toàn bộ dữ liệu chỉ mục?`)) return;
+      try {
+        await apiFetch(`/documents/${encodeURIComponent(btn.dataset.docDelete!)}`, { method: 'DELETE' });
+        toast(`Đã xoá “${name}”`, 'ok');
+        await loadDocuments();
+      } catch (err: any) {
+        toast(`Không thể xoá: ${err.message}`, 'err');
+      }
+    });
+  });
+}
+
+function closeAllDocMenus() {
+  document.querySelectorAll<HTMLElement>('.doc-menu').forEach((m) => (m.hidden = true));
+}
+
+async function uploadAndAutoProcessFiles(files: FileList | File[]) {
+  const list = Array.from(files);
+  if (!list.length) return;
+  for (const file of list) {
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      toast(`Đang tải lên “${file.name}”…`);
+      const doc = await apiFetch('/documents', { method: 'POST', body: form });
+      await loadDocuments();
+      await triggerBackgroundProcess(doc.id, doc.version, doc.filename, defaultPipelineConfigFor(doc.filename));
+    } catch (err: any) {
+      toast(`Lỗi tải lên “${file.name}”: ${err.message}`, 'err');
+    }
+  }
+}
+
+async function triggerBackgroundProcess(docId: string, version: string, filename: string, config: any) {
+  try {
+    const manifest = await apiFetch(
+      `/documents/${encodeURIComponent(docId)}/versions/${encodeURIComponent(version)}/process?background=true`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config),
+      }
+    );
+    toast(`Đang xử lý “${filename}” trong nền…`);
+    await loadDocuments();
+    if (manifest?.pipeline_run_id) {
+      watchRunProgress(manifest.pipeline_run_id, docId, version);
+    }
+  } catch (err: any) {
+    toast(`Lỗi xử lý “${filename}”: ${err.message}`, 'err');
+  }
+}
+
+function watchRunProgress(runId: string, docId: string, version: string) {
+  if (activeRunWatchers.has(runId)) return;
+
+  const updateRowFromManifest = (manifest: any) => {
+    const doc = docsCache.find((d) => d.id === docId && d.version === version);
+    if (doc) {
+      doc.latest_run = {
+        ...(doc.latest_run || {}),
+        pipeline_run_id: manifest.pipeline_run_id,
+        status: manifest.status,
+        progress: manifest.progress,
+        current_stage: manifest.current_stage,
+        stages: manifest.stages,
+        chunk_count: manifest.chunk_count ?? doc.latest_run?.chunk_count ?? 0,
+        error_message: manifest.error_message,
+      };
+      if (activeScreen === 'docs' && !$('docs-list-view').hidden) {
+        renderDocumentsList();
+      }
+    }
+  };
+
+  const finish = async (manifest: any) => {
+    const stop = activeRunWatchers.get(runId);
+    if (stop) stop();
+    activeRunWatchers.delete(runId);
+    await loadDocuments();
+    if (manifest.status === 'completed') {
+      toast('Xử lý tài liệu hoàn tất!', 'ok');
+    } else if (manifest.status === 'failed') {
+      toast(`Xử lý thất bại: ${manifest.error_message || 'Lỗi không xác định'}`, 'err');
+    }
+  };
+
+  // EventSource cannot send custom API key headers — use SSE when no custom headers are required, else poll cleanly.
+  const hasCustomHeaders = Object.keys(authHeaders()).length > 0;
+  if (!hasCustomHeaders && typeof EventSource !== 'undefined') {
+    const es = new EventSource(`${apiBase()}/runs/${encodeURIComponent(runId)}/events`);
+    const stop = () => es.close();
+    activeRunWatchers.set(runId, stop);
+    es.onmessage = (ev) => {
+      try {
+        const manifest = JSON.parse(ev.data);
+        updateRowFromManifest(manifest);
+        if (manifest.status === 'completed' || manifest.status === 'failed' || manifest.status === 'invalidated') {
+          finish(manifest);
+        }
+      } catch {}
+    };
+    es.onerror = () => {
+      es.close();
+      activeRunWatchers.delete(runId);
+      // Fallback one-shot refresh
+      loadDocuments();
+    };
+  } else {
+    let stopped = false;
+    activeRunWatchers.set(runId, () => {
+      stopped = true;
+    });
+    (async () => {
+      for (let i = 0; i < 180 && !stopped; i++) {
+        try {
+          const manifest = await apiFetch(`/runs/${encodeURIComponent(runId)}/manifest`);
+          updateRowFromManifest(manifest);
+          if (manifest.status === 'completed' || manifest.status === 'failed' || manifest.status === 'invalidated') {
+            await finish(manifest);
+            return;
+          }
+        } catch {
+          break;
+        }
+        await new Promise((r) => setTimeout(r, 450));
+      }
+      activeRunWatchers.delete(runId);
+    })();
+  }
+}
+
+async function openDocumentDetail(docId: string, version: string) {
+  $('docs-list-view').hidden = true;
+  $('docs-detail-view').hidden = false;
+  $('doc-detail-title').textContent = 'Đang tải tài liệu…';
+  $('doc-detail-chunks').innerHTML = '';
+
+  try {
+    const detail = await apiFetch(`/documents/${encodeURIComponent(docId)}/versions/${encodeURIComponent(version)}/detail`);
+    const doc = detail.document;
+    currentDetailDoc = { id: doc.id, version: doc.version, filename: doc.filename };
+
+    $('doc-detail-title').textContent = doc.filename;
+    const statusText = detail.latest_run?.status === 'completed' ? '✓ Sẵn sàng' : 'Chưa xử lý xong';
+    $('doc-detail-meta').textContent = `${detail.chunks.length} đoạn · ${formatBytes(doc.size_bytes)} · ${statusText}`;
+
+    const dl = $('doc-detail-download') as HTMLAnchorElement;
+    dl.href = apiBase() + doc.source_url;
+    dl.download = doc.filename;
+
+    // Dev metadata bar
+    $('doc-detail-dev-bar').hidden = !devMode;
+    $('doc-detail-dev-meta').textContent = `doc:${doc.id.slice(0, 10)} · sha:${doc.content_hash.slice(0, 10)}${detail.latest_run?.pipeline_run_id ? ' · run:' + detail.latest_run.pipeline_run_id.slice(0, 12) : ''}`;
+
+    // TOC
+    const tocEl = $('doc-detail-toc');
+    if (detail.toc?.length) {
+      tocEl.innerHTML = detail.toc
+        .map((item: any) => `<button type="button" class="toc-link" data-scroll-chunk="${item.chunk_index}">${esc(item.heading)}</button>`)
+        .join('');
+      tocEl.querySelectorAll<HTMLButtonElement>('[data-scroll-chunk]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          document.getElementById(`doc-chunk-${btn.dataset.scrollChunk}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+      });
+    } else {
+      tocEl.innerHTML = `<span style="font-size:12.5px;color:var(--ink-muted);">Tài liệu không có tiêu đề mục lục.</span>`;
+    }
+
+    // Main topics
+    const topicsEl = $('doc-detail-topics');
+    topicsEl.innerHTML = detail.topics?.length
+      ? detail.topics.map((t: string) => `<span class="tag-pill">${esc(t)}</span>`).join('')
+      : `<span style="font-size:12.5px;color:var(--ink-muted);">Chưa trích xuất chủ đề.</span>`;
+
+    // Prominent entities
+    const entsEl = $('doc-detail-entities');
+    entsEl.innerHTML = detail.top_entities?.length
+      ? detail.top_entities
+          .map((e: any) => `<button type="button" class="entity-chip" data-jump-entity="${esc(e.id)}">${esc(e.name)} <span style="opacity:.65">(${e.mentions})</span></button>`)
+          .join('')
+      : `<span style="font-size:12.5px;color:var(--ink-muted);">Chưa có thực thể nổi bật.</span>`;
+    entsEl.querySelectorAll<HTMLButtonElement>('[data-jump-entity]').forEach((btn) => {
+      btn.addEventListener('click', () => jumpToEntityEgoGraph(btn.dataset.jumpEntity!));
+    });
+
+    // Readable prose chunks
+    const chunksEl = $('doc-detail-chunks');
+    if (!detail.chunks?.length) {
+      chunksEl.innerHTML = `<div class="card empty-state"><div class="empty-title">Tài liệu chưa có đoạn văn nào</div><p class="empty-sub">Hãy bấm “Xử lý lại” để hệ thống đọc và tách đoạn cho tài liệu này.</p></div>`;
+    } else {
+      chunksEl.innerHTML = detail.chunks
+        .map(
+          (c: any) => `
+          <article class="prose-chunk" id="doc-chunk-${c.index}">
+            <div class="prose-chunk-head">
+              <span class="prose-chunk-heading">${esc(c.heading || `Đoạn ${c.index + 1}`)}</span>
+              <span>${c.page != null ? `Trang ${c.page}` : `#${c.index + 1}`}</span>
+            </div>
+            <div class="prose-chunk-body">${esc(c.text)}</div>
+          </article>
+        `
+        )
+        .join('');
+    }
+  } catch (err: any) {
+    $('doc-detail-chunks').innerHTML = `<div class="card empty-state"><div class="empty-title">Không thể mở tài liệu</div><p class="empty-sub">${esc(err.message)}</p></div>`;
+  }
+}
+
+function openReprocessModal(docId: string, version: string, filename: string) {
+  reprocessTarget = { id: docId, version, filename };
+  $('reprocess-doc-name').textContent = `Tài liệu: ${filename}`;
+  const def = defaultPipelineConfigFor(filename);
+  $select('rp-parser').value = def.parser;
+  $select('rp-chunker').value = def.chunker;
+  $input('rp-size').value = String(def.chunk_size);
+  $input('rp-overlap').value = String(def.overlap);
+  $('reprocess-modal').hidden = false;
+}
+
+function closeReprocessModal() {
+  $('reprocess-modal').hidden = true;
+  reprocessTarget = null;
+}
+
+// ==================== SCREEN 3: KÝ ỨC (TIMELINE) ====================
+
+async function loadMemories() {
+  try {
+    memoriesCache = await apiFetch('/memory/records?limit=300');
+    $('nav-badge-memory').textContent = String(memoriesCache.length);
+    populateMemoryFilterDropdowns();
+    renderMemoryTimeline();
+  } catch (err: any) {
+    $('memory-timeline').innerHTML = `<div class="card empty-state"><div class="empty-title">Không thể tải ký ức</div><p class="empty-sub">${esc(err.message)}</p></div>`;
+  }
+}
+
+function populateMemoryFilterDropdowns() {
+  const sessions = Array.from(new Set(memoriesCache.map((m) => m.session_id).filter(Boolean))).sort();
+  const tags = Array.from(new Set(memoriesCache.flatMap((m) => m.tags || []))).sort();
+  const entities = Array.from(
+    new Map(
+      memoriesCache
+        .flatMap((m) => m.entities || [])
+        .map((e: any) => [e.normalized_name || e.name.toLowerCase(), e.name])
+    ).entries()
+  ).sort((a, b) => a[1].localeCompare(b[1]));
+
+  const fill = (id: string, defaultLabel: string, opts: [string, string][]) => {
+    const sel = $select(id);
+    const cur = sel.value;
+    sel.innerHTML = `<option value="">${defaultLabel}</option>` + opts.map(([v, l]) => `<option value="${esc(v)}">${esc(l)}</option>`).join('');
+    if (cur && opts.some(([v]) => v === cur)) sel.value = cur;
+  };
+
+  fill('mem-filter-session', 'Phiên: Tất cả', sessions.map((s) => [s, s]));
+  fill('mem-filter-tag', 'Nhãn: Tất cả', tags.map((t) => [t, `#${t}`]));
+  fill('mem-filter-entity', 'Thực thể: Tất cả', entities);
+}
+
+function timelineBucketLabel(iso: string): { key: string; label: string } {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return { key: '0000', label: 'Trước đó' };
+  const now = new Date();
+  const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const itemDay = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const diffDays = Math.floor((startToday - itemDay) / 86400000);
+
+  if (diffDays <= 0) return { key: '9999-today', label: 'Hôm nay' };
+  if (diffDays === 1) return { key: '9998-yesterday', label: 'Hôm qua' };
+  if (diffDays <= 7) return { key: '9997-week', label: 'Tuần này' };
+  const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  return { key: ym, label: `Tháng ${d.getMonth() + 1}/${d.getFullYear()}` };
+}
+
+function renderMemoryTimeline() {
+  const q = $input('mem-filter-q').value.trim().toLowerCase();
+  const sess = $select('mem-filter-session').value;
+  const tag = $select('mem-filter-tag').value;
+  const ent = $select('mem-filter-entity').value;
+
+  const hasFilter = Boolean(q || sess || tag || ent);
+  $('btn-clear-mem-filters').hidden = !hasFilter;
+
+  const filtered = memoriesCache.filter((m) => {
+    if (sess && m.session_id !== sess) return false;
+    if (tag && !(m.tags || []).includes(tag)) return false;
+    if (ent && !(m.entities || []).some((e: any) => (e.normalized_name || e.name.toLowerCase()) === ent)) return false;
+    if (q) {
+      const hay = `${m.content} ${m.session_id} ${(m.tags || []).join(' ')} ${(m.entities || []).map((e: any) => e.name).join(' ')}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  const wrap = $('memory-timeline');
+  if (!filtered.length) {
+    wrap.innerHTML = `
+      <div class="card empty-state">
+        <div class="empty-title">${hasFilter ? 'Không có ký ức nào khớp bộ lọc' : 'Chưa có ký ức nào được lưu'}</div>
+        <p class="empty-sub">${hasFilter ? 'Hãy thử bỏ bớt bộ lọc để xem lại toàn bộ dòng thời gian.' : 'Hãy gõ một ghi chú vào ô phía trên để bắt đầu xây dựng bộ nhớ của bạn.'}</p>
+      </div>
+    `;
+    return;
+  }
+
+  // Group into visual timeline buckets
+  const groups = new Map<string, { label: string; items: any[] }>();
+  const sorted = [...filtered].sort((a, b) => String(b.timestamp || '').localeCompare(String(a.timestamp || '')));
+  for (const rec of sorted) {
+    const b = timelineBucketLabel(rec.timestamp);
+    if (!groups.has(b.key)) groups.set(b.key, { label: b.label, items: [] });
+    groups.get(b.key)!.items.push(rec);
+  }
+
+  wrap.innerHTML = Array.from(groups.values())
+    .map(
+      (g) => `
+      <div class="timeline-group">
+        <div class="timeline-group-header">
+          <span class="timeline-group-title">${esc(g.label)} (${g.items.length})</span>
+          <span class="timeline-group-line"></span>
+        </div>
+        <div class="timeline-items">
+          ${g.items
+            .map((rec) => {
+              const timeStr = new Date(rec.timestamp).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+              const dateStr = String(rec.timestamp || '').slice(0, 10);
+              const tagsHtml = (rec.tags || []).map((t: string) => `<span class="tag-pill">#${esc(t)}</span>`).join('');
+              const entsHtml = (rec.entities || [])
+                .slice(0, 6)
+                .map((e: any) => `<button type="button" class="entity-chip" data-jump-entity="${esc(e.normalized_name || e.name)}">${esc(e.name)}</button>`)
+                .join('');
+              return `
+                <article class="memory-card">
+                  <div class="memory-card-top">
+                    <span>${esc(dateStr)} · ${esc(timeStr)} · Phiên <strong>${esc(rec.session_id || 'default')}</strong></span>
+                    <button type="button" class="btn btn-ghost btn-sm" style="color:var(--danger);" data-del-mem="${esc(rec.id)}">Xoá</button>
+                  </div>
+                  <p class="memory-content">${esc(rec.content)}</p>
+                  ${tagsHtml || entsHtml ? `<div class="memory-footer">${tagsHtml}${entsHtml}</div>` : ''}
+                </article>
+              `;
+            })
+            .join('')}
+        </div>
+      </div>
+    `
+    )
+    .join('');
+
+  wrap.querySelectorAll<HTMLButtonElement>('[data-jump-entity]').forEach((btn) => {
+    btn.addEventListener('click', () => jumpToEntityEgoGraph(btn.dataset.jumpEntity!));
+  });
+
+  wrap.querySelectorAll<HTMLButtonElement>('[data-del-mem]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      try {
+        await apiFetch(`/memory/records/${encodeURIComponent(btn.dataset.delMem!)}`, { method: 'DELETE' });
+        toast('Đã xoá ký ức', 'ok');
+        await loadMemories();
+      } catch (err: any) {
+        toast(`Không thể xoá: ${err.message}`, 'err');
+      }
+    });
+  });
+}
+
+// ==================== SCREEN 4: KHÁM PHÁ ====================
+
+const EXPLORE_SUBTITLES: Record<string, string> = {
+  topics: 'Kho tri thức của bạn đang nói về những chủ đề nào?',
+  ego: 'Chọn một thực thể để xem những mối liên kết quan trọng nhất xung quanh nó.',
+  table: 'Danh sách thực thể nổi bật kèm câu trích dẫn chứng cứ trực tiếp từ tài liệu và ký ức.',
+};
+
+function switchExploreView(view: 'topics' | 'ego' | 'table') {
+  activeExploreView = view;
+  $('explore-subtitle').textContent = EXPLORE_SUBTITLES[view];
+  document.querySelectorAll<HTMLButtonElement>('[data-explore-view]').forEach((btn) => {
+    btn.classList.toggle('is-active', btn.dataset.exploreView === view);
+  });
+  $('explore-view-topics').hidden = view !== 'topics';
+  $('explore-view-ego').hidden = view !== 'ego';
+  $('explore-view-table').hidden = view !== 'table';
+  loadExploreActiveView();
+}
+
+function loadExploreActiveView() {
+  if (activeExploreView === 'topics') loadTopicMap();
+  else if (activeExploreView === 'ego') initEgoView();
+  else loadEntityTable();
+}
+
+// 4a. Topic Map
+async function loadTopicMap() {
+  const stage = $('topic-treemap-container');
+  stage.innerHTML = `<div class="empty-state"><div class="empty-title">Đang phân nhóm chủ đề…</div></div>`;
+  try {
+    const data: TopicMapPayload = await apiFetch(`/topics?source=${encodeURIComponent(topicSource)}`);
+    topicDataCache = data;
+    $('topic-summary-meta').textContent = `${data.topic_count} chủ đề · ${data.total_items} đoạn nội dung`;
+    if (data.topics.length && (!selectedTopicId || !data.topics.some((t) => t.id === selectedTopicId))) {
+      selectedTopicId = data.topics[0].id;
+    }
+    renderTopicTreemap(stage, data, selectedTopicId, (topic) => {
+      selectedTopicId = topic.id;
+      renderTopicTreemap(stage, data, selectedTopicId, (t) => {
+        selectedTopicId = t.id;
+        renderTopicDetail(t);
+      });
+      renderTopicDetail(topic);
+    });
+    const activeTopic = data.topics.find((t) => t.id === selectedTopicId);
+    if (activeTopic) renderTopicDetail(activeTopic);
+    else {
+      $('topic-detail-panel').innerHTML = `<div class="empty-state" style="padding:28px 12px;"><div class="empty-title">Chưa có chủ đề</div><p class="empty-sub">Hãy thêm tài liệu hoặc ký ức để xem bản đồ chủ đề.</p></div>`;
+    }
+  } catch (err: any) {
+    stage.innerHTML = `<div class="empty-state"><div class="empty-title">Không thể tải bản đồ chủ đề</div><p class="empty-sub">${esc(err.message)}</p></div>`;
+  }
+}
+
+function renderTopicDetail(topic: TopicCluster) {
+  const panel = $('topic-detail-panel');
+  const totalItems = Math.max(1, topicDataCache?.total_items || topic.item_count);
+  const pct = topic.share_pct ?? Math.round((topic.item_count * 1000) / totalItems) / 10;
+  const entsHtml = topic.top_entities.length
+    ? topic.top_entities
+        .slice(0, 5)
+        .map((e: any) => `<button type="button" class="entity-chip" data-jump-entity="${esc(e.id)}">${esc(e.name)} <span style="opacity:.65">(${e.mentions ?? e.count ?? 1})</span></button>`)
+        .join('')
+    : `<span style="font-size:12.5px;color:var(--ink-muted);">Không có thực thể nổi bật</span>`;
+
+  const chunksHtml = topic.representative_chunks
+    .map(
+      (c) => `
+      <div class="topic-chunk-card">
+        <div class="topic-chunk-src">${c.source_type === 'document' ? '📄' : '🧠'} ${esc(c.source_label)}${c.heading ? ' · ' + esc(c.heading) : ''}</div>
+        <div class="topic-chunk-text">${esc(c.preview)}</div>
+      </div>
+    `
+    )
+    .join('');
+
+  panel.innerHTML = `
+    <div>
+      <div style="font-size:12px;font-weight:600;color:var(--accent);">${topic.item_count} đoạn (${pct}%) · ${esc(topic.primary_source)}</div>
+      <h3 style="margin:4px 0 0;font-size:17px;">${esc(topic.label)}</h3>
+    </div>
+    <div>
+      <div class="aside-title">5 thực thể chính</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;">${entsHtml}</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <div class="aside-title">Đoạn tiêu biểu trong chủ đề</div>
+      ${chunksHtml}
+    </div>
+  `;
+
+  panel.querySelectorAll<HTMLButtonElement>('[data-jump-entity]').forEach((btn) => {
+    btn.addEventListener('click', () => jumpToEntityEgoGraph(btn.dataset.jumpEntity!));
+  });
+}
+
+// 4b. Ego Graph
+async function initEgoView() {
+  if (!egoRenderer) {
+    egoRenderer = new EgoGraphRenderer(
+      $('ego-stage'),
+      $('ego-tooltip'),
+      (entityId) => loadEgoGraph(entityId, 1),
+      (node) => renderEgoInspector(egoPayloadCache, node)
+    );
+  }
+  try {
+    const tbl = await apiFetch('/knowledge/table?view=entities&min_mentions=1&hide_single_syllable=true&limit=60');
+    topEntitiesCache = tbl.rows || [];
+    const dl = $('ego-entity-datalist');
+    dl.innerHTML = topEntitiesCache.map((e) => `<option value="${esc(e.name)}"></option>`).join('');
+
+    const sugWrap = $('ego-suggestions');
+    if (topEntitiesCache.length) {
+      sugWrap.innerHTML =
+        `<span style="font-size:12.5px;color:var(--ink-muted);">Gợi ý:</span>` +
+        topEntitiesCache
+          .slice(0, 8)
+          .map((e) => `<button type="button" class="entity-chip" data-pick-ego="${esc(e.id)}">${esc(e.name)}</button>`)
+          .join('');
+      sugWrap.querySelectorAll<HTMLButtonElement>('[data-pick-ego]').forEach((btn) => {
+        btn.addEventListener('click', () => loadEgoGraph(btn.dataset.pickEgo!, 1));
+      });
+    } else {
+      sugWrap.innerHTML = '';
+    }
+
+    if (egoCurrentEntity) {
+      await loadEgoGraph(egoCurrentEntity, egoDepth);
+    }
+  } catch {}
+}
+
+async function loadEgoGraph(entityId: string, depth: number) {
+  const cleanId = entityId.trim();
+  if (!cleanId) return;
+  egoCurrentEntity = cleanId;
+  egoDepth = depth;
+
+  const btnDepth = $('btn-ego-depth');
+  btnDepth.dataset.depth = String(depth);
+  btnDepth.textContent = depth >= 2 ? 'Thu gọn bước 1' : 'Mở rộng bước 2';
+  btnDepth.classList.toggle('btn-primary', depth >= 2);
+
+  const includeCooccur = $input('ego-show-cooccur').checked;
+  const entityType = $select('ego-type-filter').value;
+
+  const params = new URLSearchParams({
+    depth: String(depth),
+    limit: '15',
+    include_cooccurrence: String(includeCooccur),
+    min_cooccurrence: '3',
+  });
+  if (entityType) params.set('entity_type', entityType);
+
+  try {
+    const data: EgoGraphPayload = await apiFetch(`/entities/${encodeURIComponent(cleanId)}/neighbors?${params.toString()}`);
+    egoPayloadCache = data;
+    $input('ego-entity-input').value = data.center.name;
+
+    const coLabel = $('ego-cooccur-label');
+    coLabel.textContent =
+      data.hidden_cooccurrence_count > 0
+        ? `Hiện thêm ${data.hidden_cooccurrence_count} liên kết cùng ngữ cảnh (≥ 3 lần)`
+        : 'Hiện liên kết cùng ngữ cảnh (≥ 3 lần)';
+
+    if (!egoRenderer) {
+      egoRenderer = new EgoGraphRenderer(
+        $('ego-stage'),
+        $('ego-tooltip'),
+        (eid) => loadEgoGraph(eid, 1),
+        (node) => renderEgoInspector(egoPayloadCache, node)
+      );
+    }
+    egoRenderer.render(data);
+    renderEgoInspector(data, data.center);
+  } catch (err: any) {
+    $('ego-stage').innerHTML = `
+      <div class="empty-state" style="padding-top:150px;">
+        <div class="empty-title">Không tìm thấy thực thể “${esc(cleanId)}”</div>
+        <p class="empty-sub">Hãy chọn một thực thể từ danh sách gợi ý hoặc từ Bảng thực thể.</p>
+      </div>
+    `;
+  }
+}
+
+function renderEgoInspector(data: EgoGraphPayload | null, node: EgoNode) {
+  const box = $('ego-inspector');
+  if (!data) return;
+  const meta = ENTITY_TYPE_META[node.type] || ENTITY_TYPE_META.concept;
+  const nodeMap = new Map(data.nodes.map((n) => [n.id, n]));
+  const rels = data.edges.filter((e) => e.source === node.id || e.target === node.id);
+
+  const relsHtml = rels.length
+    ? rels
+        .map((e) => {
+          const isOut = e.source === node.id;
+          const other = nodeMap.get(isOut ? e.target : e.source);
+          return `
+            <div class="topic-chunk-card">
+              <div style="font-size:13px;">
+                <strong>${esc(isOut ? node.name : other?.name || e.source)}</strong>
+                <span style="color:var(--accent);font-weight:600;"> ${esc(e.predicate_label)} </span>
+                <strong>${esc(isOut ? other?.name || e.target : node.name)}</strong>
+                ${e.weight > 1 ? `<span class="tag-pill" style="margin-left:4px;">×${e.weight}</span>` : ''}
+              </div>
+              ${e.evidence_sentence ? `<div style="font-size:12px;color:var(--ink-secondary);margin-top:4px;">“${esc(e.evidence_sentence)}”</div>` : ''}
+            </div>
+          `;
+        })
+        .join('')
+    : `<div style="font-size:13px;color:var(--ink-muted);">Chưa có quan hệ rõ ràng trực tiếp. Bạn có thể bật “Hiện liên kết cùng ngữ cảnh” ở phía trên.</div>`;
+
+  box.innerHTML = `
+    <div>
+      <span class="type-badge" style="background:${meta.bg};color:${meta.color};">${esc(meta.label)}</span>
+      <h3 style="margin:6px 0 2px;font-size:17px;">${esc(node.name)}</h3>
+      <div style="font-size:12.5px;color:var(--ink-muted);">${node.mentions} lần nhắc · ${data.stats.node_count - 1} thực thể liên kết</div>
+    </div>
+    ${node.evidence_sentence ? `<div class="topic-chunk-card"><div class="topic-chunk-src">Trích dẫn tiêu biểu</div><div class="topic-chunk-text">“${esc(node.evidence_sentence)}”</div></div>` : ''}
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <div class="aside-title">Quan hệ (${rels.length})</div>
+      ${relsHtml}
+    </div>
+  `;
+}
+
+// 4c. Entity Table
+async function loadEntityTable() {
+  const q = $input('ent-table-q').value.trim();
+  const type = $select('ent-table-type').value;
+  const clean = $input('ent-table-clean').checked;
+
+  const params = new URLSearchParams({
+    view: 'entities',
+    limit: '150',
+    min_mentions: clean ? '2' : '1',
+    hide_single_syllable: String(clean),
+  });
+  if (q) params.set('q', q);
+  if (type) params.set('entity_type', type);
+
+  const tbody = $('ent-table-body');
+  try {
+    const data = await apiFetch(`/knowledge/table?${params.toString()}`);
+    $('ent-table-count').textContent = `${data.total} thực thể`;
+
+    if (!data.rows.length) {
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:36px;color:var(--ink-muted);">Không có thực thể nào phù hợp. Thử bỏ chọn bộ lọc ẩn thực thể ít xuất hiện.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = data.rows
+      .map((r: any) => {
+        const meta = ENTITY_TYPE_META[r.type] || ENTITY_TYPE_META.concept;
+        const quote = r.evidence_sentence
+          ? `“${esc(r.evidence_sentence)}”`
+          : `<span style="color:var(--ink-muted);">${esc((r.evidence_refs || []).join(', ') || '—')}</span>`;
+        const srcHint = (r.evidence_refs || []).length
+          ? `<div style="font-size:11.5px;color:var(--ink-muted);margin-top:3px;">${esc(r.evidence_refs.slice(0, 2).join(' · '))}</div>`
+          : '';
+        return `
+          <tr>
+            <td>
+              <button type="button" class="btn btn-ghost btn-sm" style="padding:2px 0;font-weight:600;color:var(--accent);" data-table-ego="${esc(r.id)}">${esc(r.name)}</button>
+            </td>
+            <td><span class="type-badge" style="background:${meta.bg};color:${meta.color};">${esc(meta.label)}</span></td>
+            <td><strong>${r.mentions}</strong></td>
+            <td>${r.explicit_degree ?? r.degree}</td>
+            <td class="evidence-quote">${quote}${srcHint}</td>
+          </tr>
+        `;
+      })
+      .join('');
+
+    tbody.querySelectorAll<HTMLButtonElement>('[data-table-ego]').forEach((btn) => {
+      btn.addEventListener('click', () => jumpToEntityEgoGraph(btn.dataset.tableEgo!));
+    });
+  } catch (err: any) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--danger);padding:24px;">${esc(err.message)}</td></tr>`;
+  }
+}
+
+// ==================== SCREEN 5: CÀI ĐẶT ====================
+
+async function loadEmbeddingSettings() {
+  try {
+    const data = await apiFetch('/settings/embedding');
+    const cfg = data.active || data;
+    $select('emb-provider').value = cfg.provider || 'custom';
+    $input('emb-base-url').value = cfg.base_url || '';
+    $input('emb-model').value = cfg.model || '';
+    $input('emb-api-key').value = '';
+    $('emb-active-summary').textContent = `Đang dùng: ${cfg.model} (${cfg.provider || 'custom'} · ${cfg.base_url})`;
+  } catch (err: any) {
+    $('emb-active-summary').textContent = `Không thể đọc cấu hình embedding: ${err.message}`;
+  }
+}
+
+// ==================== DEV MODE SCREENS ====================
+
+async function loadDevPipelineRuns() {
+  const list = $('dev-runs-list');
+  try {
+    const [runs, docs] = await Promise.all([apiFetch('/runs'), apiFetch('/documents')]);
+    const docNameMap = new Map(docs.map((d: any) => [`${d.id}:${d.version}`, d.filename]));
+    if (!runs.length) {
+      list.innerHTML = `<div class="card empty-state"><div class="empty-title">Chưa có pipeline run nào</div></div>`;
+      return;
+    }
+    list.innerHTML = runs
+      .reverse()
+      .map((r: any) => {
+        const fname = docNameMap.get(`${r.document_id}:${r.version}`) || `doc:${String(r.document_id || '').slice(0, 8)}`;
+        return `
+          <div class="card card-pad" style="display:flex;flex-direction:column;gap:8px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+              <div>
+                <strong>${esc(fname)}</strong>
+                <div style="font-family:var(--font-mono);font-size:11.5px;color:var(--ink-muted);">run:${esc(String(r.pipeline_run_id).slice(0, 12))} · ${esc(r.status)} · ${r.chunk_count ?? 0} chunks</div>
+              </div>
+              <span class="tag-pill">${esc(r.config?.parser || '')}/${esc(r.config?.chunker || '')}</span>
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              ${['manifest', 'normalized', 'chunks', 'enriched']
+                .map((art) => `<button type="button" class="btn btn-sm" data-view-art="${esc(r.pipeline_run_id)}" data-art-name="${art}">${art}</button>`)
+                .join('')}
+              <button type="button" class="btn btn-sm btn-danger" data-inv-run="${esc(r.pipeline_run_id)}">Invalidate parse</button>
+            </div>
+          </div>
+        `;
+      })
+      .join('');
+
+    list.querySelectorAll<HTMLButtonElement>('[data-view-art]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const rid = btn.dataset.viewArt!;
+        const art = btn.dataset.artName!;
+        $('dev-artifact-title').textContent = `${art}.json`;
+        $('dev-artifact-meta').textContent = `run:${rid.slice(0, 12)}`;
+        try {
+          const payload = await apiFetch(`/runs/${encodeURIComponent(rid)}/${art}`);
+          $('dev-artifact-viewer').textContent = JSON.stringify(payload, null, 2);
+        } catch (err: any) {
+          $('dev-artifact-viewer').textContent = `Lỗi: ${err.message}`;
+        }
+      });
+    });
+
+    list.querySelectorAll<HTMLButtonElement>('[data-inv-run]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        try {
+          await apiFetch(`/runs/${encodeURIComponent(btn.dataset.invRun!)}/invalidate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ stages: ['parse'] }),
+          });
+          toast('Đã invalidate stage parse', 'ok');
+          loadDevPipelineRuns();
+        } catch (err: any) {
+          toast(`Lỗi: ${err.message}`, 'err');
+        }
+      });
+    });
+  } catch (err: any) {
+    list.innerHTML = `<div class="card empty-state"><div class="empty-title">${esc(err.message)}</div></div>`;
+  }
+}
+
+async function loadDevAtlas() {
+  const source = $select('dev-atlas-source').value;
+  try {
+    const payload: AtlasPayload = await apiFetch(`/knowledge/atlas?source=${encodeURIComponent(source)}&limit=500`);
+    if (!devAtlasEngine) {
+      devAtlasEngine = new EmbeddingAtlasCanvas(
+        $('dev-atlas-canvas') as HTMLCanvasElement,
+        $('dev-atlas-tooltip'),
+        (pt) => {
+          const box = $('dev-atlas-selected');
+          if (!pt) {
+            box.hidden = true;
+            return;
+          }
+          box.hidden = false;
+          box.innerHTML = `<strong>${esc(pt.title)}</strong> <span class="tag-pill">${esc(pt.cluster_label)}</span><p style="margin:8px 0 0;font-size:13.5px;">${esc(pt.text)}</p>`;
+        },
+        () => {},
+        () => {}
+      );
+    }
+    devAtlasEngine.setData(payload);
+  } catch (err: any) {
+    toast(`Lỗi tải Embedding Atlas: ${err.message}`, 'err');
+  }
+}
+
+async function loadDevEval() {
+  try {
+    const [datasets, reports] = await Promise.all([apiFetch('/experiments/datasets'), apiFetch('/experiments/reports')]);
+    const dsSel = $select('eval-run-dataset');
+    dsSel.innerHTML = datasets.length
+      ? datasets.map((d: any) => `<option value="${esc(d.id)}">${esc(d.name)} (${d.cases?.length || 0} câu hỏi)</option>`).join('')
+      : `<option value="">Chưa có dataset</option>`;
+
+    const repWrap = $('eval-reports-list');
+    if (!reports.length) {
+      repWrap.innerHTML = `<div style="color:var(--ink-muted);font-size:13px;">Chưa có báo cáo đánh giá nào.</div>`;
+    } else {
+      repWrap.innerHTML = reports
+        .map(
+          (r: any) => `
+          <label style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);gap:10px;">
+            <span style="display:flex;align-items:center;gap:8px;">
+              <input type="checkbox" class="eval-rep-check" value="${esc(r.id)}" />
+              <strong>${esc(r.name)}</strong>
+              <span class="tag-pill">${esc(r.target)} · ${esc(r.search_mode)}</span>
+            </span>
+            <span style="font-family:var(--font-mono);font-size:12px;">Recall@K: ${Number(r.metrics?.recall_at_k || 0).toFixed(3)} · MRR: ${Number(r.metrics?.mrr || 0).toFixed(3)} · nDCG: ${Number(r.metrics?.ndcg_at_k || 0).toFixed(3)}</span>
+          </label>
+        `
+        )
+        .join('');
+    }
+  } catch (err: any) {
+    toast(`Lỗi tải Eval: ${err.message}`, 'err');
+  }
+}
+
+// ==================== Event Wiring & Bootstrap ====================
+
+// Restore persisted settings
+$input('api-endpoint').value = localStorage.getItem(STORAGE_KEYS.api) || '/api';
+$input('tenant-id').value = localStorage.getItem(STORAGE_KEYS.tenant) || '';
+applyDevModeUI();
+
+// Sidebar nav clicks
+document.querySelectorAll<HTMLButtonElement>('.sidebar .nav-item[data-screen]').forEach((btn) => {
+  btn.addEventListener('click', () => switchScreen(btn.dataset.screen!));
+});
+
+// Global Cmd/Ctrl+K focuses Ask search
 window.addEventListener('keydown', (ev) => {
   if ((ev.metaKey || ev.ctrlKey) && ev.key.toLowerCase() === 'k') {
     ev.preventDefault();
-    input('global-search-input').focus();
+    if (activeScreen !== 'ask') switchScreen('ask');
+    $input('ask-input').focus();
+    $input('ask-input').select();
+  }
+  if (ev.key === 'Escape') {
+    closeDrawer();
+    closeReprocessModal();
+    closeAllDocMenus();
   }
 });
 
-// --- Workspace Overview KPIs ---
-async function refreshOverview() {
-  const ov = await request('/knowledge/overview');
-  el('kpi-docs').textContent = String(ov.documents_count);
-  el('kpi-chunks').textContent = String(ov.chunks_count);
-  el('kpi-memories').textContent = String(ov.memory_records_count);
-  el('kpi-entities').textContent = String(ov.entities_count);
-  el('kpi-relations').textContent = String(ov.relations_count);
-  el('kpi-temporal').textContent = String(ov.temporal_anchors_count);
-  el('nav-count-docs').textContent = String(ov.documents_count);
-  el('nav-count-entities').textContent = String(ov.entities_count);
-  el('nav-count-mem').textContent = String(ov.memory_records_count);
-  el('nav-count-exp').textContent = String(ov.reports_count);
-}
+document.addEventListener('click', () => closeAllDocMenus());
 
-// --- Live 5-stage Pipeline Progress Stepper ---
-const PIPELINE_STAGE_LABELS: Record<string, string> = {
-  parse: '1. Parse',
-  normalize: '2. Normalize',
-  chunk: '3. Chunk',
-  enrich: '4. Enrich',
-  index: '5. Index',
-};
-
-function renderPipelineProgress(manifest: any, filename = '') {
-  const box = el('pipeline-progress');
-  box.style.display = 'block';
-  box.className = 'pipeline-progress-box';
-  box.replaceChildren();
-
-  const header = document.createElement('div');
-  header.className = 'card-head';
-  header.style.marginBottom = '4px';
-
-  const title = document.createElement('strong');
-  const pct = Number(manifest.progress ?? (manifest.status === 'completed' ? 100 : 15));
-  const labelPrefix = filename ? `${filename} · ` : '';
-  title.textContent = `${labelPrefix}Run ${String(manifest.pipeline_run_id || '').slice(0, 12)} · ${manifest.status} (${pct}%)`;
-
-  const stageBadge = pill(`stage: ${manifest.current_stage || manifest.status}`, manifest.status === 'failed' ? 'danger' : 'accent');
-  header.append(title, stageBadge);
-
-  const track = document.createElement('div');
-  track.className = 'progress-track';
-  const fill = document.createElement('div');
-  fill.className = `progress-fill${manifest.status === 'failed' ? ' failed' : ''}`;
-  fill.style.width = `${Math.max(4, Math.min(100, pct))}%`;
-  track.append(fill);
-
-  const steps = document.createElement('div');
-  steps.className = 'stage-steps';
-  const stages = manifest.stages || {};
-  for (const [key, label] of Object.entries(PIPELINE_STAGE_LABELS)) {
-    const st = String(stages[key] || 'pending');
-    const chip = document.createElement('span');
-    chip.className = `stage-chip ${st}`;
-    const icon = st === 'completed' ? '✓' : st === 'running' ? '●' : st === 'failed' ? '✕' : '○';
-    chip.textContent = `${icon} ${label}`;
-    steps.append(chip);
-  }
-
-  box.append(header, track, steps);
-  if (manifest.status === 'failed' && manifest.error_message) {
-    const err = document.createElement('p');
-    err.className = 'hint';
-    err.style.color = 'var(--danger-ink)';
-    err.style.margin = '8px 0 0';
-    err.textContent = `Lỗi: ${manifest.error_type || 'Error'} — ${manifest.error_message}`;
-    box.append(err);
-  }
-}
-
-async function pollRunProgress(runId: string, filename: string) {
-  for (let i = 0; i < 180; i++) {
-    const manifest = await request(`/runs/${runId}/manifest`);
-    renderPipelineProgress(manifest, filename);
-    if (manifest.status === 'completed' || manifest.status === 'failed') {
-      await Promise.all([refreshDocuments(), refreshOverview()]);
-      if (manifest.status === 'failed') {
-        throw new Error(manifest.error_message || manifest.error_type || 'Pipeline failed');
-      }
-      return;
-    }
-    await new Promise((r) => setTimeout(r, 350));
-  }
-}
-
-function currentPipelinePayload() {
-  return {
-    parser: select('parser').value,
-    chunker: select('chunker').value,
-    chunk_size: Number(input('chunk-size').value || 1200),
-    overlap: Number(input('chunk-overlap').value || 150),
-    enrich: input('enrich-toggle').checked,
-  };
-}
-
-// --- TAB 1: Documents & Pipeline ---
-async function refreshDocuments() {
-  const docs = await request('/documents');
-  el('documents').replaceChildren();
-  if (!docs.length) {
-    const empty = document.createElement('div');
-    empty.className = 'empty-state';
-    empty.textContent = 'Chưa có tài liệu nào. Upload PDF, DOCX, Markdown, TXT hoặc HTML để bắt đầu xây dựng kho tri thức.';
-    el('documents').append(empty);
-  }
-  for (const doc of docs) {
-    const row = document.createElement('article');
-    const title = document.createElement('p');
-    const strong = document.createElement('strong');
-    strong.textContent = `${doc.filename} · ${doc.version.slice(0, 10)}`;
-    title.append(strong);
-    const meta = document.createElement('div');
-    meta.className = 'meta';
-    meta.append(pill(`doc:${doc.id.slice(0, 10)}`), pill(`sha:${doc.content_hash.slice(0, 10)}`));
-    const controls = document.createElement('div');
-    controls.className = 'controls';
-    controls.append(
-      button('Process', async () => {
-        const res = await request(`/documents/${doc.id}/versions/${doc.version}/process`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(currentPipelinePayload()),
-        });
-        renderPipelineProgress(res, doc.filename);
-        await Promise.all([refreshDocuments(), refreshOverview()]);
-      }, 'sm'),
-      button('Process (Background)', async () => {
-        const initial = await request(`/documents/${doc.id}/versions/${doc.version}/process?background=true`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(currentPipelinePayload()),
-        });
-        renderPipelineProgress(initial, doc.filename);
-        await pollRunProgress(initial.pipeline_run_id, doc.filename);
-      }, 'secondary sm'),
-      button('Delete', async () => {
-        await request(`/documents/${doc.id}?version=${encodeURIComponent(doc.version)}`, {
-          method: 'DELETE',
-        });
-        await Promise.all([refreshDocuments(), refreshOverview()]);
-      }, 'danger sm')
-    );
-    row.append(title, meta, controls);
-    el('documents').append(row);
-  }
-
-  const runs = await request('/runs');
-  el('runs').replaceChildren();
-  for (const run of runs) {
-    const row = document.createElement('article');
-    const title = document.createElement('p');
-    const enrichSummary = run.enrichment_summary
-      ? ` · entities:${run.enrichment_summary.entity_count} rels:${run.enrichment_summary.relation_count}`
-      : '';
-    const pct = run.progress != null ? ` · ${run.progress}%` : '';
-    title.textContent = `${run.pipeline_run_id.slice(0, 12)} · ${run.status}${pct}${enrichSummary}`;
-    row.append(title);
-
-    const actions = document.createElement('div');
-    actions.className = 'controls';
-    for (const artifact of ['manifest', 'normalized', 'chunks', 'enriched']) {
-      actions.append(
-        button(artifact, async () => {
-          el('artifact').textContent = JSON.stringify(
-            await request(`/runs/${run.pipeline_run_id}/${artifact}`),
-            null,
-            2
-          );
-        }, 'secondary sm')
-      );
-    }
-
-    const stageSelect = document.createElement('select');
-    for (const stage of ['parse', 'normalize', 'chunk', 'enrich', 'index']) {
-      const opt = document.createElement('option');
-      opt.value = stage;
-      opt.textContent = `invalidate:${stage}`;
-      stageSelect.append(opt);
-    }
-    actions.append(
-      stageSelect,
-      button(
-        'Invalidate',
-        async () => {
-          const updated = await request(`/runs/${run.pipeline_run_id}/invalidate`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ stages: [stageSelect.value] }),
-          });
-          el('artifact').textContent = JSON.stringify(updated, null, 2);
-          await Promise.all([refreshDocuments(), refreshOverview()]);
-        },
-        'danger sm'
-      ),
-      button(
-        'Delete Run',
-        async () => {
-          await request(`/runs/${run.pipeline_run_id}`, { method: 'DELETE' });
-          await Promise.all([refreshDocuments(), refreshOverview()]);
-        },
-        'danger sm'
-      )
-    );
-    row.append(actions);
-    el('runs').append(row);
-  }
-}
-
-// --- TAB 2: Knowledge Explorer (Graph + Table + Unified Human Search) ---
-function renderGraphInspector(node: GraphNodeData, edges: GraphEdgeData[]) {
-  const panel = el('kb-graph-inspector');
-  panel.replaceChildren();
-
-  const head = document.createElement('div');
-  const h = document.createElement('h3');
-  h.style.margin = '0 0 6px';
-  h.style.color = 'var(--ink-primary)';
-  h.style.fontSize = '17px';
-  h.textContent = node.name;
-  const meta = document.createElement('div');
-  meta.className = 'meta';
-  meta.append(
-    pill(node.type, `type-${node.type}`),
-    pill(`${node.mentions} mentions`),
-    pill(`${node.degree} links`),
-    ...node.sources.map((s) => pill(s, 'accent'))
-  );
-  head.append(h, meta);
-
-  const searchBtn = button(
-    `Tìm kiếm "${node.name}"`,
-    async () => {
-      input('kb-query').value = node.name;
-      await runUnifiedKnowledgeSearch(node.name);
-    },
-    'sm'
-  );
-
-  const relHeader = document.createElement('h3');
-  relHeader.style.margin = '6px 0 0';
-  relHeader.textContent = `Quan hệ liên kết (${edges.length})`;
-
-  const relList = document.createElement('div');
-  relList.style.display = 'flex';
-  relList.style.flexDirection = 'column';
-  relList.style.gap = '6px';
-  relList.style.overflowY = 'auto';
-  relList.style.maxHeight = '220px';
-
-  for (const edge of edges.slice(0, 15)) {
-    const item = document.createElement('div');
-    item.className = 'rel-item';
-    const other = edge.source === node.id ? edge.target : edge.source;
-    const arrow = edge.source === node.id ? `→ ${other}` : `← ${other}`;
-    const line1 = document.createElement('div');
-    const code = document.createElement('code');
-    code.textContent = edge.predicate;
-    line1.append(code, ` ${arrow}`);
-    const line2 = document.createElement('div');
-    line2.style.fontSize = '11.5px';
-    line2.style.color = 'var(--ink-muted)';
-    line2.style.marginTop = '3px';
-    line2.textContent = `${edge.source_label} · conf ${edge.confidence}`;
-    item.append(line1, line2);
-    relList.append(item);
-  }
-  if (!edges.length) {
-    const p = document.createElement('p');
-    p.className = 'hint';
-    p.textContent = 'Chưa có quan hệ trực tiếp.';
-    relList.append(p);
-  }
-
-  const srcHeader = document.createElement('h3');
-  srcHeader.style.margin = '4px 0 0';
-  srcHeader.textContent = 'Nguồn chứng cứ';
-  const srcList = document.createElement('div');
-  srcList.className = 'meta';
-  for (const ref of node.evidence_refs) {
-    srcList.append(pill(ref));
-  }
-
-  panel.append(head, searchBtn, relHeader, relList, srcHeader, srcList);
-}
-
-async function refreshKnowledgeGraph() {
-  const svg = document.getElementById('knowledge-graph-svg') as unknown as SVGSVGElement;
-  if (!graphEngine) {
-    graphEngine = new InteractiveKnowledgeGraph(svg, renderGraphInspector);
-  }
-  const params = new URLSearchParams({
-    source: select('kb-source-filter').value,
-    include_cooccurrence: String(input('kb-graph-cooccur').checked),
-    max_nodes: '80',
-  });
-  const focus = input('kb-graph-entity').value.trim();
-  if (focus) params.set('entity', focus);
-
-  const payload = await request(`/knowledge/graph?${params.toString()}`);
-  graphEngine.render(payload);
-}
-
-async function refreshKnowledgeTable() {
-  const params = new URLSearchParams({
-    view: activeKbTableView,
-    source: select('kb-source-filter').value,
-    limit: '100',
-  });
-  const q = input('kb-table-filter').value.trim();
-  if (q) params.set('q', q);
-
-  const data = await request(`/knowledge/table?${params.toString()}`);
-  el('kb-table-summary').textContent = `Hiển thị ${data.rows.length} / ${data.total} bản ghi (${data.view}). Nhấp vào thực thể để xem trên đồ thị.`;
-
-  const wrap = el('kb-table-container');
-  wrap.replaceChildren();
-  if (!data.rows.length) {
-    const empty = document.createElement('div');
-    empty.className = 'empty-state';
-    empty.textContent = 'Không có dữ liệu phù hợp với bộ lọc hiện tại.';
-    wrap.append(empty);
-    return;
-  }
-
-  const table = document.createElement('table');
-  const thead = document.createElement('thead');
-  const headTr = document.createElement('tr');
-  const LABELS: Record<string, string> = {
-    name: 'Thực thể',
-    type: 'Loại',
-    mentions: 'Lượt nhắc',
-    degree: 'Liên kết',
-    sources: 'Nguồn',
-    evidence_refs: 'Chứng cứ',
-    subject: 'Chủ thể',
-    predicate: 'Quan hệ',
-    object: 'Đối tượng',
-    confidence: 'Độ tin cậy',
-    source_type: 'Loại nguồn',
-    source_label: 'Nguồn gốc',
-    filename: 'Tài liệu',
-    block_ids: 'Blocks',
-    entities: 'Thực thể',
-    temporal: 'Thời gian',
-    preview: 'Trích đoạn',
-    source_url: 'Tải gốc',
-    timestamp: 'Thời gian',
-    strategy: 'Chiến lược',
-    session_id: 'Session',
-    tags: 'Tags',
-    summary: 'Tóm tắt',
-    date: 'Ngày / Mốc',
-    granularity: 'Cấp độ',
-    label: 'Nhãn nguồn',
-  };
-
-  for (const col of data.columns) {
-    const th = document.createElement('th');
-    th.textContent = LABELS[col] || col;
-    headTr.append(th);
-  }
-  thead.append(headTr);
-
-  const tbody = document.createElement('tbody');
-  for (const row of data.rows) {
-    const tr = document.createElement('tr');
-    for (const col of data.columns) {
-      const td = document.createElement('td');
-      const val = row[col];
-      if (col === 'name' && activeKbTableView === 'entities') {
-        const link = document.createElement('a');
-        link.href = '#';
-        link.textContent = String(val);
-        link.onclick = (ev) => {
-          ev.preventDefault();
-          input('kb-graph-entity').value = String(val);
-          switchKbViz('graph');
-        };
-        td.append(link);
-      } else if (col === 'type') {
-        td.append(pill(String(val), `type-${val}`));
-      } else if (col === 'predicate') {
-        const code = document.createElement('code');
-        code.textContent = String(val);
-        td.append(code);
-      } else if (col === 'source_url' && val) {
-        const a = document.createElement('a');
-        a.href = base() + String(val);
-        a.textContent = 'Tải file';
-        td.append(a);
-      } else if (Array.isArray(val)) {
-        const wrapPills = document.createElement('div');
-        wrapPills.className = 'meta';
-        wrapPills.style.margin = '0';
-        for (const item of val.slice(0, 5)) {
-          wrapPills.append(pill(String(item)));
-        }
-        td.append(wrapPills);
-      } else {
-        td.textContent = val == null ? '' : String(val);
-      }
-      tr.append(td);
-    }
-    tbody.append(tr);
-  }
-  table.append(thead, tbody);
-  wrap.append(table);
-}
-
-async function runUnifiedKnowledgeSearch(queryText: string) {
-  const params = new URLSearchParams({
-    q: queryText,
-    scope: activeKbScope,
-    doc_mode: select('kb-doc-mode').value,
-    memory_strategy: select('kb-mem-strategy').value,
-    limit: '8',
-  });
-  const temp = input('kb-temporal').value.trim();
-  if (temp) params.set('temporal_bucket', temp);
-
-  const res = await request(`/knowledge/search?${params.toString()}`);
-
-  const metaEl = el('kb-search-meta');
-  metaEl.replaceChildren(
-    pill(`${res.total_hits} kết quả`, 'accent'),
-    pill(`${res.documents.length} tài liệu`),
-    pill(`${res.memories.length} ký ức`),
-    pill(`${res.matched_entities.length} thực thể`),
-    pill(`${res.latency_ms} ms`)
-  );
-
-  const entEl = el('kb-search-entities');
-  entEl.replaceChildren();
-  for (const ent of res.matched_entities) {
-    const p = pill(`${ent.name} (${ent.mentions})`, `type-${ent.type} clickable`);
-    p.onclick = () => {
-      input('kb-graph-entity').value = ent.name;
-      switchKbViz('graph');
-    };
-    entEl.append(p);
-  }
-
-  const out = el('kb-search-results');
-  out.replaceChildren();
-  const cols = document.createElement('div');
-  cols.className = 'search-columns';
-
-  // Documents bucket
-  const docBucket = document.createElement('div');
-  docBucket.className = 'search-bucket';
-  const docH = document.createElement('h3');
-  docH.textContent = `Tài liệu phù hợp (${res.documents.length})`;
-  docBucket.append(docH);
-  if (!res.documents.length) {
-    const p = document.createElement('p');
-    p.className = 'hint';
-    p.textContent = 'Không tìm thấy đoạn tài liệu khớp.';
-    docBucket.append(p);
-  }
-  for (const hit of res.documents) {
-    const card = document.createElement('div');
-    card.className = 'search-hit-card';
-    const text = document.createElement('p');
-    text.textContent = hit.chunk.text;
-    const m = document.createElement('div');
-    m.className = 'meta';
-    m.append(pill(hit.filename || hit.chunk.document_id.slice(0, 8), 'accent'));
-    for (const [k, v] of Object.entries(hit.score_breakdown || {})) {
-      m.append(pill(`${k}:${Number(v).toFixed(3)}`));
-    }
-    const a = document.createElement('a');
-    a.href = base() + hit.source_url;
-    a.textContent = `Tải nguồn gốc · blocks ${hit.chunk.block_ids.join(', ')}`;
-    card.append(text, m, a);
-    docBucket.append(card);
-  }
-
-  // Memories bucket
-  const memBucket = document.createElement('div');
-  memBucket.className = 'search-bucket';
-  const memH = document.createElement('h3');
-  memH.textContent = `Ký ức Agent phù hợp (${res.memories.length})`;
-  memBucket.append(memH);
-  if (!res.memories.length) {
-    const p = document.createElement('p');
-    p.className = 'hint';
-    p.textContent = 'Không tìm thấy ký ức khớp.';
-    memBucket.append(p);
-  }
-  for (const hit of res.memories) {
-    const card = document.createElement('div');
-    card.className = 'search-hit-card';
-    const text = document.createElement('p');
-    text.textContent = hit.record.content;
-    const m = document.createElement('div');
-    m.className = 'meta';
-    m.append(
-      pill(`${hit.strategy} · ${hit.score.toFixed(4)}`, 'accent'),
-      pill(`session:${hit.record.session_id}`),
-      pill(hit.record.timestamp.slice(0, 10))
-    );
-    for (const [k, v] of Object.entries(hit.score_breakdown || {})) {
-      m.append(pill(`${k}:${Number(v).toFixed(3)}`));
-    }
-    card.append(text, m);
-    memBucket.append(card);
-  }
-
-  cols.append(docBucket, memBucket);
-  out.append(cols);
-}
-
-// --- EMBEDDING ATLAS LOGIC (Apple Embedding Atlas-inspired Cross-Filtering) ---
-function pointMatchesAtlasFilters(pt: AtlasPoint, ignore?: keyof AtlasFilterState): boolean {
-  if (ignore !== 'clusterId' && atlasFilters.clusterId !== null && pt.cluster_id !== atlasFilters.clusterId) return false;
-  if (ignore !== 'sourceType' && atlasFilters.sourceType && pt.source_type !== atlasFilters.sourceType) return false;
-  if (ignore !== 'strategy' && atlasFilters.strategy && pt.strategy !== atlasFilters.strategy) return false;
-  if (ignore !== 'date' && atlasFilters.date && pt.date !== atlasFilters.date) return false;
-  if (ignore !== 'entity' && atlasFilters.entity && !pt.entities.includes(atlasFilters.entity)) return false;
-  if (ignore !== 'brushIds' && atlasFilters.brushIds && !atlasFilters.brushIds.has(pt.id)) return false;
-  if (ignore !== 'query' && atlasFilters.query.trim()) {
-    const terms = atlasFilters.query.trim().toLowerCase().split(/\s+/).filter(Boolean);
-    const hay = `${pt.title} ${pt.text} ${pt.cluster_label} ${pt.entities.join(' ')} ${pt.tags.join(' ')}`.toLowerCase();
-    if (!terms.some((t) => hay.includes(t))) return false;
-  }
-  return true;
-}
-
-function renderAtlasInspector(point: AtlasPoint | null) {
-  const panel = el('atlas-inspector');
-  panel.replaceChildren();
-  const heading = document.createElement('h3');
-  heading.textContent = 'Điểm đang chọn & Nearest Neighbors';
-  panel.append(heading);
-
-  if (!point) {
-    const empty = document.createElement('p');
-    empty.className = 'hint';
-    empty.style.margin = '0';
-    empty.textContent = 'Nhấp vào một điểm trên bản đồ để xem nội dung, chứng cứ và top láng giềng gần nhất.';
-    panel.append(empty);
-    return;
-  }
-
-  const title = document.createElement('strong');
-  title.style.display = 'block';
-  title.style.fontSize = '13.5px';
-  title.style.marginBottom = '4px';
-  title.textContent = point.title;
-
-  const meta = document.createElement('div');
-  meta.className = 'meta';
-  meta.append(
-    pill(point.cluster_label, 'accent'),
-    pill(point.source_type),
-    pill(point.strategy),
-    pill(point.date)
-  );
-
-  const body = document.createElement('p');
-  body.style.fontSize = '12.5px';
-  body.style.margin = '6px 0 8px';
-  body.style.color = 'var(--ink-secondary)';
-  body.textContent = point.text;
-
-  panel.append(title, meta, body);
-
-  if (point.source_url) {
-    const dl = document.createElement('a');
-    dl.href = base() + point.source_url;
-    dl.style.fontSize = '12px';
-    dl.style.display = 'inline-block';
-    dl.style.marginBottom = '8px';
-    dl.textContent = `Tải nguồn gốc · blocks ${point.block_ids.join(', ')}`;
-    panel.append(dl);
-  }
-
-  if (point.neighbors?.length) {
-    const nh = document.createElement('div');
-    nh.style.fontSize = '11px';
-    nh.style.fontWeight = '600';
-    nh.style.color = 'var(--ink-muted)';
-    nh.style.textTransform = 'uppercase';
-    nh.style.margin = '6px 0';
-    nh.textContent = `Nearest Neighbors (${point.neighbors.length})`;
-    panel.append(nh);
-
-    const list = document.createElement('div');
-    list.style.display = 'flex';
-    list.style.flexDirection = 'column';
-    list.style.gap = '5px';
-    for (const nbr of point.neighbors) {
-      const row = document.createElement('div');
-      row.className = 'knn-row';
-      const lbl = document.createElement('span');
-      lbl.className = 'facet-row-label';
-      lbl.textContent = nbr.title;
-      const sc = document.createElement('span');
-      sc.className = 'knn-score';
-      sc.textContent = nbr.score.toFixed(3);
-      row.append(lbl, sc);
-      row.onclick = () => atlasEngine?.selectPointById(nbr.id);
-      list.append(row);
-    }
-    panel.append(list);
-  }
-}
-
-function renderFacetBars(
-  containerId: string,
-  items: { key: string | number; label: string; total: number; filtered: number; color: string; active: boolean }[],
-  onClick: (key: string | number) => void
-) {
-  const wrap = el(containerId);
-  wrap.replaceChildren();
-  const maxTotal = Math.max(1, ...items.map((i) => i.total));
-  if (!items.length) {
-    const p = document.createElement('p');
-    p.className = 'hint';
-    p.style.margin = '0';
-    p.textContent = 'Chưa có dữ liệu.';
-    wrap.append(p);
-    return;
-  }
-  for (const item of items) {
-    const row = document.createElement('div');
-    row.className = item.active ? 'facet-row active' : 'facet-row';
-    row.onclick = () => onClick(item.key);
-
-    const head = document.createElement('div');
-    head.className = 'facet-row-head';
-    const lbl = document.createElement('span');
-    lbl.className = 'facet-row-label';
-    lbl.textContent = item.label;
-    const cnt = document.createElement('span');
-    cnt.className = 'facet-row-count';
-    cnt.textContent = item.filtered === item.total ? `${item.total}` : `${item.filtered}/${item.total}`;
-    head.append(lbl, cnt);
-
-    const track = document.createElement('div');
-    track.className = 'facet-bar-track';
-    const ghost = document.createElement('div');
-    ghost.className = 'facet-bar-ghost';
-    ghost.style.width = `${(item.total / maxTotal) * 100}%`;
-    const fill = document.createElement('div');
-    fill.className = 'facet-bar-fill';
-    fill.style.background = item.color;
-    fill.style.width = `${(item.filtered / maxTotal) * 100}%`;
-    track.append(ghost, fill);
-
-    row.append(head, track);
-    wrap.append(row);
-  }
-}
-
-function renderAtlasLinkedTable(points: AtlasPoint[]) {
-  const wrap = el('atlas-linked-table');
-  wrap.replaceChildren();
-  if (!points.length) {
-    const empty = document.createElement('div');
-    empty.className = 'empty-state';
-    empty.textContent = 'Không có điểm nào khớp bộ lọc chéo hiện tại.';
-    wrap.append(empty);
-    return;
-  }
-
-  const colorBy = select('atlas-color-by').value as AtlasColorBy;
-  const table = document.createElement('table');
-  const thead = document.createElement('thead');
-  const htr = document.createElement('tr');
-  for (const label of ['Điểm tri thức', 'Cụm (Cluster)', 'Nguồn / Chiến lược', 'Ngày', 'Thực thể', 'Nội dung']) {
-    const th = document.createElement('th');
-    th.textContent = label;
-    htr.append(th);
-  }
-  thead.append(htr);
-
-  const tbody = document.createElement('tbody');
-  for (const pt of points.slice(0, 60)) {
-    const tr = document.createElement('tr');
-    tr.style.cursor = 'pointer';
-    tr.onclick = () => atlasEngine?.selectPointById(pt.id);
-
-    const tdTitle = document.createElement('td');
-    const dot = document.createElement('span');
-    dot.style.display = 'inline-block';
-    dot.style.width = '8px';
-    dot.style.height = '8px';
-    dot.style.borderRadius = '50%';
-    dot.style.background = atlasColorForPoint(pt, colorBy);
-    dot.style.marginRight = '6px';
-    const strong = document.createElement('strong');
-    strong.textContent = pt.title;
-    tdTitle.append(dot, strong);
-
-    const tdCluster = document.createElement('td');
-    tdCluster.append(pill(pt.cluster_label, 'accent'));
-
-    const tdStrat = document.createElement('td');
-    tdStrat.append(pill(pt.source_type), ' ', pill(pt.strategy));
-
-    const tdDate = document.createElement('td');
-    tdDate.textContent = pt.date;
-
-    const tdEnt = document.createElement('td');
-    const entWrap = document.createElement('div');
-    entWrap.className = 'meta';
-    entWrap.style.margin = '0';
-    for (const e of pt.entities.slice(0, 3)) entWrap.append(pill(e));
-    tdEnt.append(entWrap);
-
-    const tdPreview = document.createElement('td');
-    tdPreview.textContent = pt.preview;
-
-    tr.append(tdTitle, tdCluster, tdStrat, tdDate, tdEnt, tdPreview);
-    tbody.append(tr);
-  }
-  table.append(thead, tbody);
-  wrap.append(table);
-}
-
-function applyAtlasFilters() {
-  if (!atlasData) return;
-  const allPts = atlasData.points;
-  const activePts = allPts.filter((p) => pointMatchesAtlasFilters(p));
-  const activeIds = new Set(activePts.map((p) => p.id));
-
-  const searchMatchedIds = new Set<string>();
-  if (atlasFilters.query.trim()) {
-    const terms = atlasFilters.query.trim().toLowerCase().split(/\s+/).filter(Boolean);
-    for (const pt of allPts) {
-      const hay = `${pt.title} ${pt.text} ${pt.cluster_label} ${pt.entities.join(' ')}`.toLowerCase();
-      if (terms.some((t) => hay.includes(t))) searchMatchedIds.add(pt.id);
-    }
-  }
-
-  atlasEngine?.setFilterMask(activeIds, searchMatchedIds);
-  el('atlas-filter-status').textContent = `${activePts.length} / ${allPts.length} điểm`;
-
-  // Linked cross-filter facets
-  const clusterItems = atlasData.clusters.map((c) => ({
-    key: c.id,
-    label: c.label,
-    total: c.count,
-    filtered: activePts.filter((p) => p.cluster_id === c.id).length,
-    color: clusterColor(c.id),
-    active: atlasFilters.clusterId === c.id,
-  }));
-  renderFacetBars('atlas-facet-clusters', clusterItems, (cid) => {
-    atlasFilters.clusterId = atlasFilters.clusterId === Number(cid) ? null : Number(cid);
-    applyAtlasFilters();
-  });
-
-  const stratItems = atlasData.facets.strategies.map((s) => ({
-    key: s.label,
-    label: s.label,
-    total: s.count,
-    filtered: activePts.filter((p) => p.strategy === s.label).length,
-    color: s.label === 'document_chunk' ? '#0f766e' : '#2563eb',
-    active: atlasFilters.strategy === s.label,
-  }));
-  renderFacetBars('atlas-facet-strategies', stratItems, (strat) => {
-    atlasFilters.strategy = atlasFilters.strategy === String(strat) ? null : String(strat);
-    applyAtlasFilters();
-  });
-
-  const dateItems = atlasData.facets.dates.slice(-8).map((d) => ({
-    key: d.label,
-    label: d.label,
-    total: d.count,
-    filtered: activePts.filter((p) => p.date === d.label).length,
-    color: '#d97706',
-    active: atlasFilters.date === d.label,
-  }));
-  renderFacetBars('atlas-facet-dates', dateItems, (dt) => {
-    atlasFilters.date = atlasFilters.date === String(dt) ? null : String(dt);
-    applyAtlasFilters();
-  });
-
-  const entWrap = el('atlas-facet-entities');
-  entWrap.replaceChildren();
-  for (const e of atlasData.facets.entities) {
-    const activeCount = activePts.filter((p) => p.entities.includes(e.label)).length;
-    const isAct = atlasFilters.entity === e.label;
-    const chip = pill(`${e.label} (${activeCount})`, isAct ? 'accent clickable' : 'clickable');
-    chip.onclick = () => {
-      atlasFilters.entity = isAct ? null : e.label;
-      applyAtlasFilters();
-    };
-    entWrap.append(chip);
-  }
-
-  renderAtlasLinkedTable(activePts);
-}
-
-async function refreshEmbeddingAtlas() {
-  const canvas = document.getElementById('embedding-atlas-canvas') as HTMLCanvasElement;
-  if (!atlasEngine) {
-    atlasEngine = new EmbeddingAtlasCanvas(canvas, el('atlas-tooltip'), {
-      onSelectPoint: (pt) => renderAtlasInspector(pt),
-      onBrushChange: (ids) => {
-        atlasFilters.brushIds = ids;
-        applyAtlasFilters();
-      },
-      onClusterClick: (cid) => {
-        atlasFilters.clusterId = atlasFilters.clusterId === cid ? null : cid;
-        applyAtlasFilters();
-      },
-    });
-  }
-  const source = select('kb-source-filter').value;
-  atlasData = await request(`/knowledge/atlas?source=${encodeURIComponent(source)}`);
-  el('atlas-meta-strip').textContent = `${atlasData!.projection.toUpperCase()} · ${
-    atlasData!.used_dense_embeddings ? 'Dense + Lexical' : 'Lexical + Entity'
-  } · ${atlasData!.clusters.length} cụm tự động · KDE Contours`;
-  atlasEngine.setData(atlasData!);
-  applyAtlasFilters();
-}
-
-async function refreshKnowledge() {
-  await refreshOverview();
-  if (activeKbViz === 'atlas') await refreshEmbeddingAtlas();
-  else if (activeKbViz === 'graph') await refreshKnowledgeGraph();
-  else await refreshKnowledgeTable();
-}
-
-// --- TAB 3: Memory Playground ---
-async function refreshMemory() {
-  const [records, temporal, graph] = await Promise.all([
-    request('/memory/records?limit=50'),
-    request('/memory/temporal'),
-    request('/memory/graph' + (input('graph-entity-filter').value ? `?entity=${encodeURIComponent(input('graph-entity-filter').value)}` : '')),
-  ]);
-
-  el('mem-record-count').textContent = String(records.length);
-  el('mem-records').replaceChildren();
-  for (const rec of records) {
-    const row = document.createElement('article');
-    const p = document.createElement('p');
-    p.textContent = rec.summary || rec.content;
-    const meta = document.createElement('div');
-    meta.className = 'meta';
-    meta.append(pill(rec.strategy, 'accent'), pill(`session:${rec.session_id}`), pill(rec.timestamp.slice(0, 10)));
-    if (rec.entities?.length) {
-      meta.append(pill(`entities:${rec.entities.map((e: any) => e.name).slice(0, 3).join(', ')}`));
-    }
-    const controls = document.createElement('div');
-    controls.className = 'controls';
-    controls.append(
-      button('Delete', async () => {
-        await request(`/memory/records/${rec.id}`, { method: 'DELETE' });
-        await Promise.all([refreshMemory(), refreshOverview()]);
-      }, 'danger sm')
-    );
-    row.append(p, meta, controls);
-    el('mem-records').append(row);
-  }
-
-  el('mem-temporal').textContent = JSON.stringify(temporal, null, 2);
-  el('mem-graph').textContent = JSON.stringify(graph, null, 2);
-}
-
-// --- TAB 4: Experimentation & Comparison ---
-async function refreshExperiments() {
-  const [datasets, reports] = await Promise.all([
-    request('/experiments/datasets'),
-    request('/experiments/reports'),
-  ]);
-
-  el('exp-datasets').replaceChildren();
-  const dsSelect = select('exp-run-dataset');
-  const prevSelected = dsSelect.value;
-  dsSelect.replaceChildren();
-  for (const ds of datasets) {
-    const row = document.createElement('article');
-    const p = document.createElement('p');
-    p.textContent = `${ds.name} (${ds.cases.length} cases)`;
-    const meta = document.createElement('div');
-    meta.className = 'meta';
-    meta.append(pill(`id:${ds.id}`), pill(`hash:${ds.dataset_hash.slice(0, 10)}`, 'accent'));
-    row.append(p, meta);
-    el('exp-datasets').append(row);
-
-    const opt = document.createElement('option');
-    opt.value = ds.id;
-    opt.textContent = `${ds.name} (${ds.id})`;
-    dsSelect.append(opt);
-  }
-  if (prevSelected) dsSelect.value = prevSelected;
-
-  el('exp-reports').replaceChildren();
-  for (const rep of reports) {
-    const row = document.createElement('article');
-    const label = document.createElement('label');
-    const cb = document.createElement('input');
-    cb.type = 'checkbox';
-    cb.className = 'report-check';
-    cb.value = rep.id;
-    cb.checked = true;
-    const title = document.createElement('strong');
-    title.textContent = `${rep.name} [${rep.target}]`;
-    label.append(cb, title);
-    const meta = document.createElement('div');
-    meta.className = 'meta';
-    meta.append(
-      pill(`Recall@${rep.k}: ${rep.metrics.recall_at_k.toFixed(3)}`, 'accent'),
-      pill(`MRR: ${rep.metrics.mrr.toFixed(3)}`),
-      pill(`nDCG@${rep.k}: ${rep.metrics.ndcg_at_k.toFixed(3)}`),
-      pill(`${rep.metrics.avg_latency_ms.toFixed(1)} ms`)
-    );
-    row.append(label, meta);
-    el('exp-reports').append(row);
-  }
-}
-
-function renderComparison(comparison: any) {
-  const wrap = el('exp-comparison');
-  wrap.replaceChildren();
-  const info = document.createElement('p');
-  info.className = 'hint';
-  info.textContent = `Baseline: ${comparison.baseline_id} · Dataset hash match: ${comparison.same_dataset_hash ? 'YES' : 'DIFFERS'}`;
-  wrap.append(info);
-
-  const tableWrap = document.createElement('div');
-  tableWrap.className = 'table-wrap';
-  const table = document.createElement('table');
-  const thead = document.createElement('thead');
-  const htr = document.createElement('tr');
-  for (const label of ['Run', 'Target / Config', 'Dataset Hash', 'Recall@K', 'MRR', 'nDCG@K', 'Latency (ms)']) {
-    const th = document.createElement('th');
-    th.textContent = label;
-    htr.append(th);
-  }
-  thead.append(htr);
-
-  const tbody = document.createElement('tbody');
-  for (const row of comparison.reports) {
-    const tr = document.createElement('tr');
-    const cfg = row.target === 'documents'
-      ? `docs · ${row.config_snapshot.search_mode}`
-      : `memory · ${row.config_snapshot.resolved_memory_strategy}`;
-
-    const tdName = document.createElement('td');
-    const strong = document.createElement('strong');
-    strong.textContent = row.name;
-    const br = document.createElement('br');
-    const small = document.createElement('small');
-    small.textContent = row.id;
-    tdName.append(strong, br, small);
-
-    const tdCfg = document.createElement('td');
-    tdCfg.append(pill(cfg));
-
-    const tdHash = document.createElement('td');
-    const code = document.createElement('code');
-    code.textContent = row.dataset_hash.slice(0, 10);
-    tdHash.append(code);
-
-    tr.append(tdName, tdCfg, tdHash);
-
-    for (const metric of ['recall_at_k', 'mrr', 'ndcg_at_k']) {
-      const td = document.createElement('td');
-      const val = Number(row.metrics[metric]).toFixed(3);
-      const delta = Number(row.delta_vs_baseline[metric]);
-      td.append(val);
-      if (delta !== 0) {
-        const span = document.createElement('span');
-        span.className = delta > 0 ? 'delta-pos' : 'delta-neg';
-        span.textContent = ` (${delta > 0 ? '+' : ''}${delta.toFixed(3)})`;
-        td.append(span);
-      }
-      tr.append(td);
-    }
-
-    const tdLat = document.createElement('td');
-    tdLat.textContent = row.metrics.avg_latency_ms.toFixed(2);
-    tr.append(tdLat);
-    tbody.append(tr);
-  }
-  table.append(thead, tbody);
-  tableWrap.append(table);
-  wrap.append(tableWrap);
-}
-
-// --- TAB 5: Embedding Provider Settings ---
-function showEmbeddingBanner(message: string, kind: 'ok' | 'err' | 'info' = 'info') {
-  const banner = el('emb-test-result');
-  banner.style.display = 'block';
-  banner.className = kind === 'info' ? 'settings-banner' : `settings-banner ${kind}`;
-  banner.textContent = message;
-}
-
-async function refreshEmbeddingSettings() {
-  const cfg = await request('/settings/embedding');
-  const shortModel = (cfg.model || 'unset').split('/').pop() || 'unset';
-  el('nav-emb-model').textContent = shortModel.slice(0, 12);
-  el('emb-active-source').textContent = cfg.source === 'persisted' ? 'runtime saved' : 'env default';
-
-  const summary = el('emb-active-summary');
-  summary.replaceChildren(
-    pill(`provider: ${cfg.provider}`, 'accent'),
-    pill(`model: ${cfg.model || '(chưa đặt)'}`),
-    pill(`doc_ns: ${cfg.document_namespace}`),
-    pill(`mem_ns: ${cfg.memory_namespace}`),
-    pill(cfg.has_api_key ? `key: ${cfg.api_key_masked}` : 'key: none')
-  );
-
-  select('emb-provider').value = ['ollama', 'openai', 'lmstudio', 'custom'].includes(cfg.provider) ? cfg.provider : 'custom';
-  input('emb-base-url').value = cfg.base_url || '';
-  input('emb-model').value = cfg.model || '';
-  input('emb-api-key').value = '';
-  input('emb-api-key').placeholder = cfg.has_api_key
-    ? `Đã lưu (${cfg.api_key_masked}) — để trống để giữ nguyên`
-    : 'Chưa cấu hình (không cần với Ollama local)';
-  input('emb-clear-key').checked = false;
-
-  const presetsWrap = el('emb-presets');
-  presetsWrap.replaceChildren();
-  for (const preset of cfg.presets || []) {
-    const card = document.createElement('button');
-    card.type = 'button';
-    const isSelected = preset.model && preset.model === cfg.model && preset.base_url === cfg.base_url;
-    card.className = `preset-card${isSelected ? ' selected' : ''}`;
-
-    const title = document.createElement('span');
-    title.className = 'preset-title';
-    title.textContent = preset.label;
-
-    const sub = document.createElement('span');
-    sub.className = 'preset-sub';
-    sub.textContent = preset.model
-      ? `${preset.model}${preset.dimensions ? ` · ${preset.dimensions}d` : ''}`
-      : 'Nhập URL & Model tùy chỉnh';
-
-    const notes = document.createElement('span');
-    notes.className = 'preset-notes';
-    notes.textContent = preset.notes || '';
-
-    card.append(title, sub, notes);
-    card.onclick = () => {
-      document.querySelectorAll('.preset-card').forEach((c) => c.classList.remove('selected'));
-      card.classList.add('selected');
-      select('emb-provider').value = preset.provider || 'custom';
-      if (preset.base_url) input('emb-base-url').value = preset.base_url;
-      if (preset.model) input('emb-model').value = preset.model;
-      showEmbeddingBanner(`Đã chọn preset "${preset.label}". Bấm Test Connection để kiểm tra hoặc Save & Apply để áp dụng ngay.`);
-    };
-    presetsWrap.append(card);
-  }
-}
-
-el('btn-emb-test').onclick = () => {
-  action(async () => {
-    const payload: Record<string, any> = {
-      base_url: input('emb-base-url').value.trim() || null,
-      model: input('emb-model').value.trim() || null,
-    };
-    const keyVal = input('emb-api-key').value.trim();
-    if (keyVal) payload.api_key = keyVal;
-    const res = await request('/settings/embedding/test', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    if (res.ok) {
-      showEmbeddingBanner(
-        `Kết nối thành công! Model "${res.model}" trả về vector ${res.dimension} chiều trong ${res.latency_ms} ms (${res.base_url}).`,
-        'ok'
-      );
-    } else {
-      showEmbeddingBanner(`Kết nối thất bại (${res.latency_ms} ms): ${res.error}`, 'err');
-      throw new Error(res.error || 'Embedding connection test failed');
-    }
-  });
-};
-
-el('emb-settings-form').onsubmit = (event) => {
-  event.preventDefault();
-  action(async () => {
-    const payload: Record<string, any> = {
-      provider: select('emb-provider').value,
-      base_url: input('emb-base-url').value.trim(),
-      model: input('emb-model').value.trim(),
-      clear_api_key: input('emb-clear-key').checked,
-    };
-    const keyVal = input('emb-api-key').value.trim();
-    if (keyVal) payload.api_key = keyVal;
-    const updated = await request('/settings/embedding', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    await refreshEmbeddingSettings();
-    const nsNote = updated.namespace_changed
-      ? ` Namespace mới: ${updated.document_namespace} (hãy Process lại các tài liệu cần tìm với model mới).`
-      : '';
-    showEmbeddingBanner(
-      `Đã lưu & áp dụng model "${updated.model}" (${updated.provider}) trực tiếp không cần restart!${nsNote}`,
-      'ok'
-    );
-  });
-};
-
-async function refreshAll() {
-  await Promise.all([
-    refreshOverview(),
-    refreshDocuments(),
-    refreshMemory(),
-    refreshExperiments(),
-    refreshEmbeddingSettings(),
-  ]);
-}
-
-// --- Event Bindings ---
-el('global-search-form').onsubmit = (event) => {
-  event.preventDefault();
-  const q = input('global-search-input').value.trim();
-  if (!q) return;
-  input('kb-query').value = q;
-  input('atlas-search-input').value = q;
-  atlasFilters.query = q;
-  switchTab('knowledge');
-  action(() => runUnifiedKnowledgeSearch(q));
-};
-
-el('btn-open-atlas').onclick = () => {
-  switchTab('knowledge');
-  switchKbViz('atlas');
-};
-
-el('btn-open-graph').onclick = () => {
-  switchTab('knowledge');
-  switchKbViz('graph');
-};
-
-el('btn-open-table').onclick = () => {
-  switchTab('knowledge');
-  switchKbViz('table');
-};
-
-el('btn-refresh-all').onclick = () => action(refreshAll);
-
-// Embedding Atlas controls
-el('atlas-search-input').oninput = () => {
-  atlasFilters.query = input('atlas-search-input').value;
-  applyAtlasFilters();
-};
-
-el('atlas-color-by').onchange = () => {
-  atlasEngine?.setOptions({ colorBy: select('atlas-color-by').value as AtlasColorBy });
-  applyAtlasFilters();
-};
-
-for (const btn of document.querySelectorAll<HTMLButtonElement>('#atlas-mode-switch button')) {
-  btn.onclick = () => {
-    const mode = btn.dataset.mode as AtlasInteractionMode;
-    document.querySelectorAll('#atlas-mode-switch button').forEach((b) => b.classList.toggle('active', b === btn));
-    atlasEngine?.setOptions({ mode });
-  };
-}
-
-el('atlas-contours').onchange = () => {
-  atlasEngine?.setOptions({ showContours: input('atlas-contours').checked });
-};
-
-el('atlas-labels').onchange = () => {
-  atlasEngine?.setOptions({ showLabels: input('atlas-labels').checked });
-};
-
-el('btn-atlas-zoom-in').onclick = () => atlasEngine?.zoomBy(1.25);
-el('btn-atlas-zoom-out').onclick = () => atlasEngine?.zoomBy(0.8);
-el('btn-atlas-zoom-reset').onclick = () => atlasEngine?.resetView();
-
-el('btn-atlas-clear-filters').onclick = () => {
-  atlasFilters = { clusterId: null, sourceType: null, strategy: null, date: null, entity: null, query: '', brushIds: null };
-  input('atlas-search-input').value = '';
-  atlasEngine?.resetView();
-  applyAtlasFilters();
-};
-
-// Knowledge Explorer controls
-for (const btn of document.querySelectorAll<HTMLButtonElement>('#kb-scope-control button')) {
-  btn.onclick = () => {
-    activeKbScope = btn.dataset.scope!;
-    document.querySelectorAll('#kb-scope-control button').forEach((b) => b.classList.toggle('active', b === btn));
-  };
-}
-
-for (const btn of document.querySelectorAll<HTMLButtonElement>('#kb-viz-switch button')) {
-  btn.onclick = () => switchKbViz(btn.dataset.viz as 'atlas' | 'graph' | 'table');
-}
-
-for (const btn of document.querySelectorAll<HTMLButtonElement>('#kb-table-views button')) {
-  btn.onclick = () => {
-    activeKbTableView = btn.dataset.view!;
-    document.querySelectorAll('#kb-table-views button').forEach((b) => b.classList.toggle('active', b === btn));
-    action(refreshKnowledgeTable);
-  };
-}
-
-el('kb-source-filter').onchange = () => action(refreshKnowledge);
-el('kb-graph-cooccur').onchange = () => action(refreshKnowledgeGraph);
-el('btn-kb-graph-apply').onclick = () => action(refreshKnowledgeGraph);
-el('btn-kb-graph-clear').onclick = () => {
-  input('kb-graph-entity').value = '';
-  action(refreshKnowledgeGraph);
-};
-el('btn-zoom-in').onclick = () => graphEngine?.zoomBy(1.2);
-el('btn-zoom-out').onclick = () => graphEngine?.zoomBy(0.82);
-el('btn-zoom-reset').onclick = () => graphEngine?.resetView();
-
-el('kb-table-filter-form').onsubmit = (ev) => {
+// Ask events
+$('ask-form').addEventListener('submit', (ev) => {
   ev.preventDefault();
-  action(refreshKnowledgeTable);
-};
+  runAskSearch();
+});
 
-el('kb-search-form').onsubmit = (ev) => {
+document.querySelectorAll<HTMLButtonElement>('[data-ask-scope]').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    askScope = btn.dataset.askScope as any;
+    document.querySelectorAll('[data-ask-scope]').forEach((b) => b.classList.toggle('is-active', b === btn));
+    if ($input('ask-input').value.trim()) runAskSearch();
+  });
+});
+
+$('ask-time-filter').addEventListener('change', () => {
+  if ($input('ask-input').value.trim()) runAskSearch();
+});
+$('ask-doc-filter').addEventListener('change', () => {
+  if ($input('ask-input').value.trim()) runAskSearch();
+});
+$('ask-dev-doc-mode').addEventListener('change', () => {
+  if ($input('ask-input').value.trim()) runAskSearch();
+});
+$('ask-dev-mem-strategy').addEventListener('change', () => {
+  if ($input('ask-input').value.trim()) runAskSearch();
+});
+
+$('btn-clear-ask').addEventListener('click', clearAskResults);
+$('btn-goto-docs-from-ask').addEventListener('click', () => switchScreen('docs'));
+$('btn-goto-mem-from-ask').addEventListener('click', () => switchScreen('memory'));
+$('btn-close-drawer').addEventListener('click', closeDrawer);
+$('drawer-backdrop').addEventListener('click', closeDrawer);
+
+// Documents events
+const dropzone = $('doc-dropzone');
+const fileInput = $input('doc-file-input');
+
+$('btn-pick-files').addEventListener('click', () => fileInput.click());
+dropzone.addEventListener('click', () => fileInput.click());
+dropzone.addEventListener('keydown', (ev) => {
+  if (ev.key === 'Enter' || ev.key === ' ') {
+    ev.preventDefault();
+    fileInput.click();
+  }
+});
+dropzone.addEventListener('dragover', (ev) => {
   ev.preventDefault();
-  const q = input('kb-query').value.trim();
-  if (!q) return;
-  action(() => runUnifiedKnowledgeSearch(q));
-};
+  dropzone.classList.add('is-dragover');
+});
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('is-dragover'));
+dropzone.addEventListener('drop', (ev) => {
+  ev.preventDefault();
+  dropzone.classList.remove('is-dragover');
+  if (ev.dataTransfer?.files?.length) uploadAndAutoProcessFiles(ev.dataTransfer.files);
+});
+fileInput.addEventListener('change', () => {
+  if (fileInput.files?.length) {
+    uploadAndAutoProcessFiles(fileInput.files);
+    fileInput.value = '';
+  }
+});
 
-// Documents & Search
-el('upload').onsubmit = (event) => {
-  event.preventDefault();
-  action(async () => {
-    const file = (input('file').files || [])[0];
-    if (!file) return;
-    const body = new FormData();
-    body.append('file', file);
-    const docId = input('upload-doc-id').value.trim();
-    const qs = docId ? `?document_id=${encodeURIComponent(docId)}` : '';
-    await request('/documents' + qs, { method: 'POST', body });
-    await Promise.all([refreshDocuments(), refreshOverview()]);
-  });
-};
+$('btn-back-docs').addEventListener('click', () => {
+  $('docs-detail-view').hidden = true;
+  $('docs-list-view').hidden = false;
+  currentDetailDoc = null;
+  loadDocuments();
+});
 
-el('search').onsubmit = (event) => {
-  event.preventDefault();
-  action(async () => {
-    const params = new URLSearchParams({
-      q: input('query').value,
-      mode: select('search-mode').value,
-    });
-    const docId = input('filter-doc-id').value.trim();
-    const runId = input('filter-run-id').value.trim();
-    if (docId) params.set('document_id', docId);
-    if (runId) params.set('pipeline_run_id', runId);
+$('doc-detail-reprocess').addEventListener('click', () => {
+  if (currentDetailDoc) {
+    openReprocessModal(currentDetailDoc.id, currentDetailDoc.version, currentDetailDoc.filename);
+  }
+});
 
-    const hits = await request(`/search?${params.toString()}`);
-    el('results').replaceChildren();
-    if (!hits.length) el('results').textContent = 'Chưa có kết quả.';
-    for (const hit of hits) {
-      const row = document.createElement('article');
-      const text = document.createElement('p');
-      text.textContent = hit.chunk.text;
-      const source = document.createElement('a');
-      source.href = base() + hit.source_url;
-      source.textContent = `Nguồn · score ${hit.score.toFixed(3)} · blocks ${hit.chunk.block_ids.join(', ')}`;
-      row.append(text, source);
-      if (hit.score_breakdown && Object.keys(hit.score_breakdown).length) {
-        const meta = document.createElement('div');
-        meta.className = 'meta';
-        for (const [k, v] of Object.entries(hit.score_breakdown)) {
-          meta.append(pill(`${k}:${Number(v).toFixed(3)}`));
-        }
-        row.append(meta);
-      }
-      el('results').append(row);
-    }
-  });
-};
+$('btn-open-in-inspector').addEventListener('click', () => switchScreen('dev-pipeline'));
 
-// Memory
-el('mem-store-form').onsubmit = (event) => {
-  event.preventDefault();
-  action(async () => {
-    const tags = input('mem-tags').value.split(',').map((t) => t.trim()).filter(Boolean);
-    await request('/memory/store', {
+// Reprocess modal events
+$select('rp-chunker').addEventListener('change', () => {
+  if ($select('rp-chunker').value === 'hybrid') {
+    $select('rp-parser').value = 'docling';
+  }
+});
+$('btn-close-reprocess').addEventListener('click', closeReprocessModal);
+$('btn-cancel-reprocess').addEventListener('click', closeReprocessModal);
+$('reprocess-form').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  if (!reprocessTarget) return;
+  const cfg = {
+    parser: $select('rp-parser').value,
+    chunker: $select('rp-chunker').value,
+    chunk_size: Number($input('rp-size').value || 1200),
+    overlap: Number($input('rp-overlap').value || 150),
+    enrich: true,
+  };
+  const target = reprocessTarget;
+  closeReprocessModal();
+  $('docs-detail-view').hidden = true;
+  $('docs-list-view').hidden = false;
+  await triggerBackgroundProcess(target.id, target.version, target.filename, cfg);
+});
+
+// Memory events
+$('btn-toggle-mem-opts').addEventListener('click', () => {
+  const panel = $('memory-options-panel');
+  panel.hidden = !panel.hidden;
+  $('btn-toggle-mem-opts').textContent = panel.hidden ? 'Tuỳ chọn ▾' : 'Tuỳ chọn ▴';
+});
+
+$('memory-form').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const content = ($('memory-input') as HTMLTextAreaElement).value.trim();
+  if (!content) return;
+  const tags = $input('mem-opt-tags')
+    .value.split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  try {
+    await apiFetch('/memory/store', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        content: (el('mem-content') as HTMLTextAreaElement).value,
-        session_id: input('mem-session').value.trim() || 'default',
-        role: select('mem-role').value,
-        strategy: select('mem-store-strategy').value,
+        content,
+        session_id: $input('mem-opt-session').value.trim() || 'default',
+        role: $select('mem-opt-role').value,
+        strategy: devMode ? $select('mem-opt-strategy').value : 'hybrid',
         tags,
       }),
     });
-    (el('mem-content') as HTMLTextAreaElement).value = '';
-    await Promise.all([refreshMemory(), refreshOverview()]);
-  });
-};
+    ($('memory-input') as HTMLTextAreaElement).value = '';
+    toast('Đã lưu ký ức mới!', 'ok');
+    await loadMemories();
+  } catch (err: any) {
+    toast(`Không thể lưu ký ức: ${err.message}`, 'err');
+  }
+});
 
-el('mem-search-form').onsubmit = (event) => {
-  event.preventDefault();
-  action(async () => {
-    const hits = await request('/memory/search', {
+['mem-filter-q', 'mem-filter-session', 'mem-filter-tag', 'mem-filter-entity'].forEach((id) => {
+  $(id).addEventListener(id === 'mem-filter-q' ? 'input' : 'change', renderMemoryTimeline);
+});
+$('btn-clear-mem-filters').addEventListener('click', () => {
+  $input('mem-filter-q').value = '';
+  $select('mem-filter-session').value = '';
+  $select('mem-filter-tag').value = '';
+  $select('mem-filter-entity').value = '';
+  renderMemoryTimeline();
+});
+
+// Explore events
+document.querySelectorAll<HTMLButtonElement>('[data-explore-view]').forEach((btn) => {
+  btn.addEventListener('click', () => switchExploreView(btn.dataset.exploreView as any));
+});
+
+document.querySelectorAll<HTMLButtonElement>('[data-topic-source]').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    topicSource = btn.dataset.topicSource as any;
+    document.querySelectorAll('[data-topic-source]').forEach((b) => b.classList.toggle('is-active', b === btn));
+    selectedTopicId = null;
+    loadTopicMap();
+  });
+});
+
+$('ego-search-form').addEventListener('submit', (ev) => {
+  ev.preventDefault();
+  const val = $input('ego-entity-input').value.trim();
+  if (val) loadEgoGraph(val, 1);
+});
+
+$('btn-ego-depth').addEventListener('click', () => {
+  if (!egoCurrentEntity) return;
+  loadEgoGraph(egoCurrentEntity, egoDepth >= 2 ? 1 : 2);
+});
+$('ego-type-filter').addEventListener('change', () => {
+  if (egoCurrentEntity) loadEgoGraph(egoCurrentEntity, egoDepth);
+});
+$('ego-show-cooccur').addEventListener('change', () => {
+  if (egoCurrentEntity) loadEgoGraph(egoCurrentEntity, egoDepth);
+});
+$('btn-ego-zoom-in').addEventListener('click', () => egoRenderer?.zoomBy(1.18));
+$('btn-ego-zoom-out').addEventListener('click', () => egoRenderer?.zoomBy(0.84));
+$('btn-ego-reset').addEventListener('click', () => egoRenderer?.resetView());
+
+let entSearchTimer: number | null = null;
+$('ent-table-q').addEventListener('input', () => {
+  if (entSearchTimer) clearTimeout(entSearchTimer);
+  entSearchTimer = window.setTimeout(loadEntityTable, 180);
+});
+$('ent-table-type').addEventListener('change', loadEntityTable);
+$('ent-table-clean').addEventListener('change', loadEntityTable);
+
+// Settings events
+$input('dev-mode-toggle').addEventListener('change', () => {
+  devMode = $input('dev-mode-toggle').checked;
+  localStorage.setItem(STORAGE_KEYS.devMode, devMode ? '1' : '0');
+  applyDevModeUI();
+  toast(devMode ? 'Đã bật Chế độ nhà phát triển' : 'Đã tắt Chế độ nhà phát triển', 'ok');
+});
+
+document.querySelectorAll<HTMLButtonElement>('[data-emb-preset]').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const p = EMB_PRESETS[btn.dataset.embPreset!];
+    if (!p) return;
+    $select('emb-provider').value = p.provider;
+    $input('emb-base-url').value = p.base_url;
+    $input('emb-model').value = p.model;
+  });
+});
+
+$('btn-emb-test').addEventListener('click', async () => {
+  const resEl = $('emb-test-result');
+  resEl.textContent = 'Đang kiểm tra…';
+  try {
+    const data = await apiFetch('/settings/embedding/test', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        query: input('mem-query').value,
-        strategy: select('mem-search-strategy').value,
-        limit: Number(input('mem-search-limit').value || 5),
-        session_id: input('mem-search-session').value.trim() || null,
-        temporal_bucket: input('mem-search-temporal').value.trim() || null,
+        provider: $select('emb-provider').value,
+        base_url: $input('emb-base-url').value.trim(),
+        model: $input('emb-model').value.trim(),
+        api_key: $input('emb-api-key').value.trim() || null,
       }),
     });
-    el('mem-results').replaceChildren();
-    if (!hits.length) {
-      el('mem-results').textContent = 'Không tìm thấy ký ức phù hợp.';
-      return;
-    }
-    for (const hit of hits) {
-      const row = document.createElement('article');
-      const p = document.createElement('p');
-      p.textContent = hit.record.content;
-      const meta = document.createElement('div');
-      meta.className = 'meta';
-      meta.append(pill(`${hit.strategy} · ${hit.score.toFixed(4)}`, 'accent'));
-      for (const [k, v] of Object.entries(hit.score_breakdown || {})) {
-        meta.append(pill(`${k}:${Number(v).toFixed(3)}`));
-      }
-      row.append(p, meta);
-      el('mem-results').append(row);
-    }
-  });
-};
+    resEl.textContent = data.ok ? `✓ Kết nối thành công (chiều vector: ${data.dimensions}, ${data.latency_ms} ms)` : `⚠ ${data.error}`;
+  } catch (err: any) {
+    resEl.textContent = `⚠ ${err.message}`;
+  }
+});
 
-el('btn-refresh-mem').onclick = () => action(refreshMemory);
-el('btn-filter-graph').onclick = () => action(refreshMemory);
+$('emb-settings-form').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  try {
+    await apiFetch('/settings/embedding', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        provider: $select('emb-provider').value,
+        base_url: $input('emb-base-url').value.trim(),
+        model: $input('emb-model').value.trim(),
+        api_key: $input('emb-api-key').value.trim() || null,
+      }),
+    });
+    toast('Đã lưu và áp dụng nhà cung cấp Embedding!', 'ok');
+    loadEmbeddingSettings();
+  } catch (err: any) {
+    toast(`Lỗi lưu Embedding: ${err.message}`, 'err');
+  }
+});
 
-// Experiments
-el('btn-ds-sample').onclick = () => {
-  (el('exp-ds-cases') as HTMLTextAreaElement).value = JSON.stringify(
+$('api-conn-form').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  localStorage.setItem(STORAGE_KEYS.api, $input('api-endpoint').value.trim() || '/api');
+  localStorage.setItem(STORAGE_KEYS.tenant, $input('tenant-id').value.trim());
+  await checkHealth();
+  await loadAskIdleData();
+  toast('Đã cập nhật kết nối API', 'ok');
+});
+
+// Dev mode actions
+$('btn-dev-refresh-runs').addEventListener('click', loadDevPipelineRuns);
+$('btn-dev-atlas-reload').addEventListener('click', loadDevAtlas);
+$('dev-atlas-source').addEventListener('change', loadDevAtlas);
+
+$('btn-eval-sample').addEventListener('click', () => {
+  ($('eval-ds-cases') as HTMLTextAreaElement).value = JSON.stringify(
     [
-      { query: 'Memory Lab provenance evidence', relevant_substrings: ['Memory Lab'] },
-      { query: 'Qdrant Neo4j hybrid retrieval', relevant_substrings: ['Qdrant'] },
+      { query: 'PostgreSQL Qdrant', relevant_substrings: ['PostgreSQL'] },
+      { query: 'Memory Lab', relevant_substrings: ['Memory Lab'] },
     ],
     null,
     2
   );
-};
+});
 
-el('exp-dataset-form').onsubmit = (event) => {
-  event.preventDefault();
-  action(async () => {
-    const cases = JSON.parse((el('exp-ds-cases') as HTMLTextAreaElement).value);
-    await request('/experiments/datasets', {
+$('eval-dataset-form').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  try {
+    const cases = JSON.parse(($('eval-ds-cases') as HTMLTextAreaElement).value);
+    await apiFetch('/experiments/datasets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: $input('eval-ds-name').value.trim(), description: '', cases }),
+    });
+    toast('Đã tạo dataset đánh giá', 'ok');
+    loadDevEval();
+  } catch (err: any) {
+    toast(`Lỗi: ${err.message}`, 'err');
+  }
+});
+
+$('eval-run-form').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  try {
+    await apiFetch('/experiments/run', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        name: input('exp-ds-name').value.trim(),
-        description: input('exp-ds-desc').value.trim(),
-        cases,
+        name: $input('eval-run-name').value.trim(),
+        dataset_id: $select('eval-run-dataset').value,
+        target: $select('eval-run-target').value,
+        k: 5,
+        search_mode: $select('eval-run-mode').value,
       }),
     });
-    await Promise.all([refreshExperiments(), refreshOverview()]);
-  });
-};
+    toast('Đã hoàn tất chạy benchmark', 'ok');
+    loadDevEval();
+  } catch (err: any) {
+    toast(`Lỗi: ${err.message}`, 'err');
+  }
+});
 
-el('exp-run-form').onsubmit = (event) => {
-  event.preventDefault();
-  action(async () => {
-    const target = select('exp-run-target').value;
-    await request('/experiments/run', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: input('exp-run-name').value.trim(),
-        dataset_id: select('exp-run-dataset').value,
-        target,
-        k: Number(input('exp-run-k').value || 5),
-        search_mode: select('exp-run-mode').value,
-        memory_strategy: target === 'memory' ? select('exp-run-strategy').value : null,
-        document_id: input('exp-run-doc-filter').value.trim() || null,
-        pipeline_run_id: input('exp-run-run-filter').value.trim() || null,
-      }),
-    });
-    await Promise.all([refreshExperiments(), refreshOverview()]);
-  });
-};
+$('btn-eval-compare').addEventListener('click', async () => {
+  const ids = Array.from(document.querySelectorAll<HTMLInputElement>('.eval-rep-check:checked')).map((c) => c.value);
+  if (!ids.length) {
+    toast('Chọn ít nhất 1 báo cáo để so sánh', 'err');
+    return;
+  }
+  try {
+    const data = await apiFetch(`/experiments/compare?ids=${encodeURIComponent(ids.join(','))}`);
+    $('eval-compare-out').innerHTML = `<pre class="code-box">${esc(JSON.stringify(data, null, 2))}</pre>`;
+  } catch (err: any) {
+    toast(`Lỗi so sánh: ${err.message}`, 'err');
+  }
+});
 
-el('btn-compare').onclick = () => {
-  action(async () => {
-    const ids = Array.from(document.querySelectorAll<HTMLInputElement>('.report-check:checked')).map((c) => c.value);
-    if (!ids.length) throw new Error('Chọn ít nhất 1 báo cáo để so sánh.');
-    const comparison = await request(`/experiments/compare?ids=${encodeURIComponent(ids.join(','))}`);
-    renderComparison(comparison);
-  });
-};
-
-el('api').onchange = () => action(refreshAll);
-el('tenant-id').onchange = () => action(refreshAll);
-el('api-key').onchange = () => action(refreshAll);
-action(refreshAll);
+// Initial load
+checkHealth();
+loadAskIdleData();
 </script>
 </body>
 </html>

@@ -3,175 +3,174 @@ import os
 from uuid import uuid4
 
 
-def test_document_lifecycle(page):
+def test_document_upload_autoprocess_detail_and_ask_drawer(page):
     from playwright.sync_api import expect
-    content = "Memory Lab preserves original evidence. Every research chunk cites its source blocks."
-    filename = f"e2e-{uuid4().hex}.txt"
+
+    marker = uuid4().hex[:8]
+    content = (
+        f"# Quy trình vận hành {marker}\n\n"
+        f"Memory Lab sử dụng PostgreSQL và Qdrant để lưu trữ chứng cứ gốc cho dự án {marker}. "
+        f"Alice quản lý Memory Lab và kiểm tra dữ liệu hàng tuần.\n\n"
+        f"## Hạ tầng triển khai\n\n"
+        f"Hệ thống chạy trên Docker với quy trình nạp nguyên liệu tự động cho {marker}."
+    )
+    filename = f"tai-lieu-{marker}.md"
+
     page.goto(os.getenv("E2E_BASE_URL", "http://localhost:4321"))
-    expect(page.locator("#status")).to_have_text("Hoàn tất.")
-    page.locator("#file").set_input_files({"name": filename, "mimeType": "text/plain", "buffer": content.encode()})
-    page.locator("#upload button").click()
-    document = page.locator("#documents article").filter(has_text=filename)
-    expect(document).to_be_visible()
-    page.locator("#parser").select_option("text")
-    with page.expect_response(lambda response: response.url.endswith("/process") and response.request.method == "POST") as processed:
-        document.get_by_role("button", name="Process", exact=True).click()
-    assert processed.value.status == 200
-    run = processed.value.json()
-    assert run["status"] == "completed"
-    expect(page.locator("#status")).to_have_text("Hoàn tất.")
-    row = page.locator("#runs article").filter(has_text=run["pipeline_run_id"][:12])
-    row.get_by_role("button", name="normalized", exact=True).click()
-    expect(page.locator("#artifact")).to_contain_text(content)
-    normalized = json.loads(page.locator("#artifact").inner_text())
-    assert normalized["version"] == run["version"]
-    row.get_by_role("button", name="chunks", exact=True).click()
-    expect(page.locator("#artifact")).to_contain_text('"block_ids"')
-    chunks = json.loads(page.locator("#artifact").inner_text())
-    assert chunks[0]["block_ids"] == ["text:0"]
-    page.locator("#query").fill("research evidence")
-    page.locator("#search button").click()
-    expect(page.locator("#results")).to_contain_text(content)
+    expect(page.locator("#conn-label")).to_have_text("Đã kết nối", timeout=15000)
+    # Default landing screen is Hỏi (no 6 KPI clutter boxes)
+    expect(page.locator("#screen-ask")).to_be_visible()
+
+    # Switch to Tài liệu and upload file — auto-processes in background without clicking Process
+    page.locator("button.nav-item[data-screen='docs']").click()
+    expect(page.locator("#screen-docs")).to_be_visible()
+    page.locator("#doc-file-input").set_input_files(
+        {"name": filename, "mimeType": "text/markdown", "buffer": content.encode("utf-8")}
+    )
+
+    row = page.locator("#docs-list .doc-row").filter(has_text=filename)
+    expect(row).to_be_visible(timeout=15000)
+    expect(row).to_contain_text("Sẵn sàng", timeout=30000)
+
+    # Open Document Reading Detail view (TOC + readable prose + entities)
+    row.locator(".doc-main").click()
+    expect(page.locator("#docs-detail-view")).to_be_visible()
+    expect(page.locator("#doc-detail-title")).to_have_text(filename)
+    expect(page.locator("#doc-detail-toc")).to_contain_text(f"Quy trình vận hành {marker}")
+    expect(page.locator("#doc-detail-chunks")).to_contain_text("PostgreSQL")
+    expect(page.locator("#doc-detail-entities")).to_contain_text("PostgreSQL")
+
+    # Download original file from detail view
     with page.expect_download() as downloaded:
-        page.locator("#results a").first.click()
+        page.locator("#doc-detail-download").click()
     assert downloaded.value.failure() is None
-    assert open(downloaded.value.path(), "rb").read() == content.encode()
-    with page.expect_response(lambda response: response.url.endswith("/process")) as retried:
-        document.get_by_role("button", name="Process", exact=True).click()
-    assert retried.value.json()["pipeline_run_id"] == run["pipeline_run_id"]
+    assert open(downloaded.value.path(), "rb").read() == content.encode("utf-8")
+
+    # Go to Hỏi, search unified knowledge, inspect highlighted snippet + Reading Drawer
+    page.locator("button.nav-item[data-screen='ask']").click()
+    page.locator("#ask-input").fill(f"PostgreSQL {marker}")
+    page.locator("#ask-form button[type='submit']").click()
+
+    first_card = page.locator("#ask-results-list .result-card").first
+    expect(first_card).to_be_visible(timeout=15000)
+    expect(first_card).to_contain_text(filename)
+    expect(first_card.locator("mark").first).to_be_visible()
+    expect(first_card.locator(".relevance-bars")).to_be_visible()
+
+    # Click result card to open Right-hand Reading Drawer
+    first_card.click()
+    expect(page.locator("#reading-drawer")).to_be_visible()
+    expect(page.locator("#drawer-body")).to_contain_text(f"dự án {marker}")
+    page.locator("#btn-close-drawer").click()
+    expect(page.locator("#reading-drawer")).to_be_hidden()
 
 
-def test_processing_error_is_visible(page):
+def test_memory_timeline_and_explore_topics_ego_table(page):
     from playwright.sync_api import expect
-    page.goto(os.getenv("E2E_BASE_URL", "http://localhost:4321"))
-    expect(page.locator("#status")).to_have_text("Hoàn tất.")
-    filename = f"invalid-{uuid4().hex}.txt"
-    page.locator("#file").set_input_files({"name": filename, "mimeType": "text/plain", "buffer": b"Error fixture"})
-    page.locator("#upload button").click()
-    document = page.locator("#documents article").filter(has_text=filename)
-    expect(document).to_be_visible()
-    page.locator("#parser").select_option("text")
-    page.locator("#chunker").select_option("hybrid")
-    document.get_by_role("button", name="Process", exact=True).click()
-    expect(page.locator("#status")).to_contain_text("Hybrid chunking requires Docling")
 
-
-def test_memory_and_experimentation_ui(page):
-    from playwright.sync_api import expect
     marker = uuid4().hex[:8]
     page.goto(os.getenv("E2E_BASE_URL", "http://localhost:4321"))
-    expect(page.locator("#status")).to_have_text("Hoàn tất.")
+    expect(page.locator("#conn-label")).to_have_text("Đã kết nối", timeout=15000)
 
-    # Switch to Memory Playground tab
-    page.locator("button.tab[data-tab='memory']").click()
-    page.locator("#mem-content").fill(f"Memory Lab uses Neo4j and BM25 for marker-{marker} on 2026-11-25.")
-    page.locator("#mem-store-strategy").select_option("hybrid")
-    page.locator("#mem-store-form button[type='submit']").click()
-    expect(page.locator("#status")).to_have_text("Hoàn tất.")
-    expect(page.locator("#mem-records")).to_contain_text(f"marker-{marker}")
-    expect(page.locator("#mem-graph")).to_contain_text("neo4j")
-
-    page.locator("#mem-query").fill(f"Neo4j marker-{marker}")
-    page.locator("#mem-search-strategy").select_option("zero_token")
-    page.locator("#mem-search-form button[type='submit']").click()
-    expect(page.locator("#mem-results")).to_contain_text(f"marker-{marker}")
-
-    # Switch to Experimentation & Comparison tab
-    page.locator("button.tab[data-tab='experiments']").click()
-    page.locator("#exp-ds-name").fill(f"eval-{marker}")
-    page.locator("#exp-ds-cases").fill(
-        json.dumps([{"query": f"Neo4j marker-{marker}", "relevant_substrings": [f"marker-{marker}"]}])
+    # Switch to Ký ức and store a memory using the clean top composer (options collapsed by default)
+    page.locator("button.nav-item[data-screen='memory']").click()
+    expect(page.locator("#memory-options-panel")).to_be_hidden()
+    page.locator("#memory-input").fill(
+        f"Alice quản lý Memory Lab và dùng PostgreSQL cho chiến dịch {marker}."
     )
-    page.locator("#exp-dataset-form button[type='submit']").click()
-    expect(page.locator("#exp-datasets")).to_contain_text(f"eval-{marker}")
+    page.locator("#memory-form button[type='submit']").click()
 
-    page.locator("#exp-run-name").fill(f"zero-token-{marker}")
-    page.locator("#exp-run-target").select_option("memory")
-    page.locator("#exp-run-strategy").select_option("zero_token")
-    page.locator("#exp-run-form button[type='submit']").click()
-    expect(page.locator("#exp-reports")).to_contain_text(f"zero-token-{marker}")
+    # Visual timeline grouped by Hôm nay (no raw JSON!)
+    expect(page.locator("#memory-timeline")).to_contain_text("Hôm nay", timeout=15000)
+    expect(page.locator("#memory-timeline")).to_contain_text(marker)
 
-    page.locator("#btn-compare").click()
-    expect(page.locator("#exp-comparison table")).to_contain_text(f"zero-token-{marker}")
+    # Click an entity chip in the memory card to jump directly into Khám phá -> Ego Graph
+    card = page.locator("#memory-timeline .memory-card").filter(has_text=marker)
+    card.locator("button.entity-chip").filter(has_text="Memory Lab").first.click()
+
+    expect(page.locator("#screen-explore")).to_be_visible()
+    expect(page.locator("#explore-view-ego")).to_be_visible()
+    expect(page.locator("#ego-stage svg.ego-svg g.ego-node-group")).not_to_have_count(0, timeout=15000)
+    expect(page.locator("#ego-inspector")).to_contain_text("Memory Lab")
+
+    # Switch to Bản đồ chủ đề (Treemap)
+    page.locator("[data-explore-view='topics']").click()
+    expect(page.locator("#explore-view-topics")).to_be_visible()
+    expect(page.locator("#topic-treemap-container .tm-tile").first).to_be_visible(timeout=15000)
+    expect(page.locator("#topic-detail-panel")).to_contain_text("5 thực thể chính")
+
+    # Switch to Bảng thực thể and check quoted evidence sentence
+    page.locator("[data-explore-view='table']").click()
+    expect(page.locator("#explore-view-table")).to_be_visible()
+    # Uncheck clean filter in case marker-only test DB has 1 mention
+    page.locator("#ent-table-clean").uncheck()
+    expect(page.locator("#ent-table-body")).to_contain_text("PostgreSQL", timeout=15000)
+    expect(page.locator("#ent-table-body")).to_contain_text("“")
 
 
-def test_knowledge_explorer_graph_table_and_search(page):
+def test_settings_embedding_dev_mode_and_document_delete(page):
     from playwright.sync_api import expect
+
     marker = uuid4().hex[:8]
+    filename = f"del-{marker}.txt"
     page.goto(os.getenv("E2E_BASE_URL", "http://localhost:4321"))
-    expect(page.locator("#status")).to_have_text("Hoàn tất.")
+    expect(page.locator("#conn-label")).to_have_text("Đã kết nối", timeout=15000)
 
-    # Upload & process a document to seed knowledge
-    page.locator("#file").set_input_files(
-        {
-            "name": f"kb-{marker}.txt",
-            "mimeType": "text/plain",
-            "buffer": f"Memory Lab uses Qdrant and BM25 for marker-{marker} since 2026-11-25.".encode(),
-        }
-    )
-    page.locator("#upload button[type='submit']").click()
-    doc = page.locator("#documents article").filter(has_text=f"kb-{marker}.txt")
-    expect(doc).to_be_visible()
-    page.locator("#parser").select_option("text")
-    doc.get_by_role("button", name="Process", exact=True).click()
-    expect(page.locator("#status")).to_have_text("Hoàn tất.")
+    # Developer section is hidden by default
+    expect(page.locator("#nav-dev-section")).to_be_hidden()
 
-    # Use Global Search Bar to jump into Knowledge Explorer (default: Embedding Atlas)
-    page.locator("#global-search-input").fill(f"Qdrant marker-{marker}")
-    page.locator("#global-search-form button[type='submit']").click()
-    expect(page.locator("#tab-knowledge")).to_be_visible()
-    expect(page.locator("#kb-search-results")).to_contain_text(f"marker-{marker}")
-    expect(page.locator("#embedding-atlas-canvas")).to_be_visible()
-    expect(page.locator("#atlas-linked-table table")).to_contain_text(f"kb-{marker}.txt")
-
-    # Switch to Interactive Knowledge Graph view
-    page.locator("#kb-viz-switch button[data-viz='graph']").click()
-    expect(page.locator("#knowledge-graph-svg g[data-node-id]")).not_to_have_count(0)
-
-    # Switch to Table view and check entities + relations
-    page.locator("#kb-viz-switch button[data-viz='table']").click()
-    expect(page.locator("#kb-table-container table")).to_contain_text("Qdrant")
-    page.locator("#kb-table-views button[data-view='relations']").click()
-    expect(page.locator("#kb-table-container table")).to_contain_text("uses")
-
-
-def test_embedding_settings_background_progress_and_delete(page):
-    from playwright.sync_api import expect
-    marker = uuid4().hex[:8]
-    filename = f"bg-del-{marker}.txt"
-    page.goto(os.getenv("E2E_BASE_URL", "http://localhost:4321"))
-    expect(page.locator("#status")).to_have_text("Hoàn tất.")
-
-    # 1. Open Embedding Settings tab, verify presets + Test Connection + Save & Apply
-    page.locator("button.tab[data-tab='settings']").click()
-    expect(page.locator("#tab-settings")).to_be_visible()
-    expect(page.locator("#emb-presets")).to_contain_text("bge-m3")
+    # Open Cài đặt -> test Embedding connection + Save & Apply
+    page.locator("button.nav-item[data-screen='settings']").click()
+    expect(page.locator("#screen-settings")).to_be_visible()
     page.locator("#btn-emb-test").click()
-    expect(page.locator("#emb-test-result")).to_contain_text("Kết nối thành công")
-    page.locator("#btn-emb-save").click()
-    expect(page.locator("#emb-test-result")).to_contain_text("Đã lưu & áp dụng")
-    expect(page.locator("#emb-active-source")).to_have_text("runtime saved")
+    expect(page.locator("#emb-test-result")).to_contain_text("Kết nối thành công", timeout=15000)
+    page.locator("#emb-settings-form button[type='submit']").click()
+    expect(page.locator("#toast-rack")).to_contain_text("Embedding", timeout=10000)
 
-    # 2. Switch back to Documents tab, upload, run Process (Background) and watch 5-stage progress complete
-    page.locator("button.tab[data-tab='documents']").click()
-    page.locator("#file").set_input_files(
+    # Enable Developer Mode -> reveals Pipeline Inspector, Embedding Atlas, Eval
+    page.locator(".toggle-switch").click()
+    expect(page.locator("#nav-dev-section")).to_be_visible()
+
+    # Upload a document, wait for Sẵn sàng, then inspect in Pipeline Inspector and delete via ⋯ menu
+    page.locator("button.nav-item[data-screen='docs']").click()
+    page.locator("#doc-file-input").set_input_files(
         {
             "name": filename,
             "mimeType": "text/plain",
-            "buffer": f"Background processing and deletion test for {marker}.".encode(),
+            "buffer": f"Kiểm thử xóa tài liệu và Pipeline Inspector cho {marker}.".encode("utf-8"),
         }
     )
-    page.locator("#upload button[type='submit']").click()
-    doc = page.locator("#documents article").filter(has_text=filename)
-    expect(doc).to_be_visible()
-    page.locator("#parser").select_option("text")
-    doc.get_by_role("button", name="Process (Background)", exact=True).click()
-    expect(page.locator("#pipeline-progress")).to_contain_text("completed (100%)")
-    expect(page.locator("#status")).to_have_text("Hoàn tất.")
+    row = page.locator("#docs-list .doc-row").filter(has_text=filename)
+    expect(row).to_contain_text("Sẵn sàng", timeout=30000)
 
-    # 3. Delete the document from UI and confirm removal
-    doc.get_by_role("button", name="Delete", exact=True).click()
-    expect(page.locator("#status")).to_have_text("Hoàn tất.")
-    expect(page.locator("#documents article").filter(has_text=filename)).to_have_count(0)
+    # Inspect chunks artifact in Pipeline Inspector
+    page.locator("button.nav-item[data-screen='dev-pipeline']").click()
+    expect(page.locator("#dev-runs-list")).to_contain_text(filename, timeout=15000)
+    run_card = page.locator("#dev-runs-list .card").filter(has_text=filename).first
+    run_card.get_by_role("button", name="chunks", exact=True).click()
+    expect(page.locator("#dev-artifact-viewer")).to_contain_text(marker, timeout=10000)
 
+    # Open Developer Embedding Atlas
+    page.locator("button.nav-item[data-screen='dev-atlas']").click()
+    expect(page.locator("#dev-atlas-canvas")).to_be_visible()
 
+    # Open Developer Eval and create + run dataset
+    page.locator("button.nav-item[data-screen='dev-eval']").click()
+    page.locator("#eval-ds-name").fill(f"eval-{marker}")
+    page.locator("#eval-ds-cases").fill(
+        json.dumps([{"query": f"Pipeline Inspector {marker}", "relevant_substrings": [marker]}])
+    )
+    page.locator("#eval-dataset-form button[type='submit']").click()
+    expect(page.locator("#eval-run-dataset")).to_contain_text(f"eval-{marker}", timeout=10000)
+    page.locator("#eval-run-name").fill(f"run-{marker}")
+    page.locator("#eval-run-form button[type='submit']").click()
+    expect(page.locator("#eval-reports-list")).to_contain_text(f"run-{marker}", timeout=15000)
+
+    # Delete the uploaded document via ⋯ overflow menu
+    page.locator("button.nav-item[data-screen='docs']").click()
+    row = page.locator("#docs-list .doc-row").filter(has_text=filename)
+    expect(row).to_be_visible(timeout=10000)
+    page.on("dialog", lambda dialog: dialog.accept())
+    row.locator("button[aria-label='Thao tác']").click()
+    row.get_by_role("button", name="Xoá tài liệu").click()
+    expect(page.locator("#docs-list .doc-row").filter(has_text=filename)).to_have_count(0, timeout=15000)
