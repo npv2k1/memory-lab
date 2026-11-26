@@ -391,7 +391,12 @@ def create_app(
     @app.get("/documents")
     def documents(request: Request):
         _ctx, svc = resolve(request, "viewer")
-        return svc.store.documents()
+        return svc.knowledge.documents_with_status()
+
+    @app.get("/documents/{identity}/versions/{version}/detail")
+    def document_detail(request: Request, identity: str, version: str):
+        _ctx, svc = resolve(request, "viewer")
+        return svc.knowledge.document_detail(identity, version)
 
     @app.post("/documents", status_code=201)
     def upload(request: Request, file: UploadFile = File(...), document_id: UUID | None = None):
@@ -693,6 +698,8 @@ def create_app(
         q: str | None = Query(None),
         entity_type: str | None = Query(None),
         source: KnowledgeSourceFilter = Query("all"),
+        min_mentions: int = Query(1, ge=1, le=100),
+        hide_single_syllable: bool = Query(False),
         limit: int = Query(100, ge=1, le=500),
         offset: int = Query(0, ge=0),
     ):
@@ -702,6 +709,8 @@ def create_app(
             q=q,
             entity_type=entity_type,
             source=source,
+            min_mentions=min_mentions,
+            hide_single_syllable=hide_single_syllable,
             limit=limit,
             offset=offset,
         )
@@ -722,6 +731,37 @@ def create_app(
             max_nodes=max_nodes,
         )
 
+    @app.get("/topics")
+    def knowledge_topics(
+        request: Request,
+        source: KnowledgeSourceFilter = Query("all"),
+        n_topics: int | None = Query(None, ge=1, le=12),
+    ):
+        _ctx, svc = resolve(request, "viewer")
+        return svc.knowledge.topics(source=source, n_topics=n_topics)
+
+    @app.get("/entities/{entity_id:path}/neighbors")
+    def entity_neighbors(
+        request: Request,
+        entity_id: str,
+        depth: int = Query(1, ge=1, le=2),
+        limit: int = Query(15, ge=1, le=50),
+        include_cooccurrence: bool = Query(False),
+        min_cooccurrence: int = Query(3, ge=1, le=20),
+        entity_type: str | None = Query(None),
+        source: KnowledgeSourceFilter = Query("all"),
+    ):
+        _ctx, svc = resolve(request, "viewer")
+        return svc.knowledge.entity_neighbors(
+            entity_id,
+            depth=depth,
+            limit=limit,
+            include_cooccurrence=include_cooccurrence,
+            min_cooccurrence=min_cooccurrence,
+            entity_type=entity_type,
+            source=source,
+        )
+
     @app.get("/knowledge/search")
     def knowledge_search(
         request: Request,
@@ -729,6 +769,7 @@ def create_app(
         scope: KnowledgeSourceFilter = Query("all"),
         doc_mode: SearchMode = Query("hybrid"),
         memory_strategy: MemoryStrategyName = Query("hybrid"),
+        document_id: str | None = Query(None),
         temporal_bucket: str | None = Query(None),
         limit: int = Query(10, ge=1, le=50),
     ):
@@ -738,6 +779,7 @@ def create_app(
             scope=scope,
             doc_mode=doc_mode,
             memory_strategy=memory_strategy,
+            document_id=document_id,
             temporal_bucket=temporal_bucket,
             limit=limit,
         )
