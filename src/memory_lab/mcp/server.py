@@ -156,11 +156,14 @@ class MCPServer:
         return {"jsonrpc": "2.0", "id": req_id, "error": {"code": code, "message": message}}
 
     def _tool_ok(self, req_id: Any, payload: Any) -> dict[str, Any]:
+        # MCP requires structuredContent to be a JSON object; clients (e.g. the
+        # TypeScript SDK) reject arrays, so list payloads are wrapped.
+        structured = payload if isinstance(payload, dict) else {"results": payload}
         return self._result(
             req_id,
             {
                 "content": [{"type": "text", "text": json.dumps(payload, ensure_ascii=False)}],
-                "structuredContent": payload,
+                "structuredContent": structured,
                 "isError": False,
             },
         )

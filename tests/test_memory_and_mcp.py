@@ -195,7 +195,7 @@ def test_mcp_jsonrpc_lifecycle(tmp_path):
             },
         ).json()
         assert searched["result"]["isError"] is False
-        assert searched["result"]["structuredContent"][0]["record"]["id"] == memory_id
+        assert searched["result"]["structuredContent"]["results"][0]["record"]["id"] == memory_id
 
         fetched = api.post(
             "/mcp",
@@ -285,6 +285,6 @@ def test_mcp_stdio_transport(tmp_path, monkeypatch):
     assert lines[0]["id"] == 1
     assert lines[1]["result"]["isError"] is False
     stored_id = lines[1]["result"]["structuredContent"]["id"]
-    assert lines[2]["result"]["structuredContent"][0]["record"]["id"] == stored_id
+    assert lines[2]["result"]["structuredContent"]["results"][0]["record"]["id"] == stored_id
     client.close()
 
